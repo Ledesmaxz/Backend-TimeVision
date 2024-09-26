@@ -5,10 +5,6 @@ const createRequest = async (req, res) => {
     const requestData = req.body;
     const solicitud = new Solicitud(requestData);
 
-    if (req.files && req.files.adjunto) {
-      const adjuntoPath = req.files.adjunto.path;
-      solicitud.adjunto = adjuntoPath;
-    }
 
     const solicitudStored = await solicitud.save();
     res.status(201).send(solicitudStored);
