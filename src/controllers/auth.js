@@ -70,6 +70,7 @@ const register = async (req, res) => {
 
 
 const login = async (req, res) => {
+    console.log(req.body);
     const { email, password } = req.body;
 
     try {
@@ -114,7 +115,7 @@ const refreshAccessToken = (req, res) => {
 
 
 module.exports = {
-  register,
-  login,
+  register: [upload.none(), register],
+  login: [upload.none(), login],
   refreshAccessToken,
 };

@@ -16,8 +16,6 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
 
 app.listen(process.env.PORT_PC, () =>
