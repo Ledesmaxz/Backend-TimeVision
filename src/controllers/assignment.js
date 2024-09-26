@@ -1,12 +1,12 @@
-const Asignacion = require("../models/asignacion");
+const Assignment = require("../models/assignment");
 
-const createAsignacion = async (req, res) => {
+const createAssignment = async (req, res) => {
   try {
-    const asignacionData = req.body;
-    const asignacion = new Asignacion(asignacionData);
+    const AssignmentData = req.body;
+    const Assignment = new Assignment(AssignmentData);
 
-    const asignacionStored = await asignacion.save();
-    res.status(201).send(asignacionStored);
+    const AssignmentStored = await Assignment.save();
+    res.status(201).send(AssignmentStored);
   } catch (error) {
     res
       .status(400)
@@ -14,46 +14,46 @@ const createAsignacion = async (req, res) => {
   }
 };
 
-const getAsignacion = async (req, res) => {
+const getAssignment = async (req, res) => {
   try {
     const { id } = req.params;
-    const asignacion = await Asignacion.findById(id);
+    const Assignment = await Assignment.findById(id);
 
-    if (!asignacion) {
+    if (!Assignment) {
       return res.status(404).send({ msg: "No se encontró la asignación" });
     }
-    res.status(200).send(asignacion);
+    res.status(200).send(Assignment);
   } catch (error) {
     res.status(500).send({ msg: "Error del servidor", error: error.message });
   }
 };
 
-const getAsignaciones = async (req, res) => {
+const getAssignmentes = async (req, res) => {
   try {
-    const asignaciones = await Asignacion.find();
-    res.status(200).send(asignaciones);
+    const Assignmentes = await Assignment.find();
+    res.status(200).send(Assignmentes);
   } catch (error) {
     res.status(500).send({ msg: "Error del servidor", error: error.message });
   }
 };
 
-const updateAsignacion = async (req, res) => {
+const updateAssignment = async (req, res) => {
   try {
     const { id } = req.params;
-    const asignacionData = req.body;
+    const AssignmentData = req.body;
 
-    const asignacionUpdated = await Asignacion.findByIdAndUpdate(
+    const AssignmentUpdated = await Assignment.findByIdAndUpdate(
       { _id: id },
-      asignacionData,
+      AssignmentData,
       { new: true }
     );
 
-    if (!asignacionUpdated) {
+    if (!AssignmentUpdated) {
       return res
         .status(404)
         .send({ msg: "No se encontró la asignación para actualizar" });
     }
-    res.status(200).send(asignacionUpdated);
+    res.status(200).send(AssignmentUpdated);
   } catch (error) {
     res
       .status(400)
@@ -61,13 +61,13 @@ const updateAsignacion = async (req, res) => {
   }
 };
 
-const deleteAsignacion = async (req, res) => {
+const deleteAssignment = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const asignacionDeleted = await Asignacion.findByIdAndDelete(id);
+    const AssignmentDeleted = await Assignment.findByIdAndDelete(id);
 
-    if (!asignacionDeleted) {
+    if (!AssignmentDeleted) {
       return res
         .status(404)
         .send({ msg: "No se encontró la asignación para eliminar" });
@@ -81,9 +81,9 @@ const deleteAsignacion = async (req, res) => {
 };
 
 module.exports = {
-  createAsignacion,
-  getAsignacion,
-  getAsignaciones,
-  updateAsignacion,
-  deleteAsignacion,
+  createAssignment,
+  getAssignment,
+  getAssignmentes,
+  updateAssignment,
+  deleteAssignment,
 };

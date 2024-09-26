@@ -1,6 +1,5 @@
 const User = require("../models/user");
 const bcrypt = require("bcrypt");
-const image= require("../utils/image")
 
 const createUser= async (req, res)=> {   
     try {
@@ -11,10 +10,6 @@ const createUser= async (req, res)=> {
         const hashedPassword =await bcrypt.hash(userData.password,salt);
 
         user.password=hashedPassword;
-        if(req.files.avatar){
-            const imagePath= image.getFilePath(req.files.avatar);
-            user.avatar= imagePath;
-        }
         const userStored = await user.save();
         res.status(201).send(userStored);
     } catch (error) {
@@ -76,11 +71,6 @@ const updateUser = async( req, res)=>{
             userData.password= hashedPassword;
         }else{
             delete userData.password;
-        }
-
-        if(req.files && req.files.avatar){
-            const imagePath= image.getFilePath(req.files.avatar);
-            userData.avatar= imagePath;
         }
 
         await User.findByIdAndUpdate({_id:id}, userData);
