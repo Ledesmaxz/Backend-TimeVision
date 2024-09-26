@@ -1,13 +1,13 @@
 const jwt = require("jsonwebtoken");
-require('dotenv').config();
-const JWT_SECRET_KEY = process.env.JWT_SECRET;
+require("dotenv").config({ path: '../../.env' });
+const JWT_SECRET_KEY = process.env.JWT_SECRET || 'localjwtexample';
 
 const createAccessToken = (user) => {
     const expToken = new Date();
     expToken.setHours(expToken.getHours()+2);
     const payload = {
         token_type: "access",
-        _id : _id,
+        _id : user._id,
         iat : Date.now(),
         ep : expToken.getTime(),
     };
@@ -19,7 +19,7 @@ const createRefreshToken = (user) => {
     expToken.getMonth(expToken.getMonth()+1);
     const payload = {
         token_type: "refresh",
-        _id : _id,
+        _id : user._id,
         iat : Date.now(),
         ep : expToken.getTime(),
     };

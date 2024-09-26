@@ -1,21 +1,42 @@
+const express = require("express");
+const multer = require("multer");
 const bcrypt = require("bcryptjs");
 const User = require("../models/user");
-require("dotenv").config();
+const jwt = require("../utils/jwt");
 
+const upload = multer();
 const register = async (req, res) => {
-    const { name, lastname, password, email, num_doc, telephone, photo, cargo, id_departament, id_jefe, state } = req.body;
+
+    const { 
+        name,
+        lastname, 
+        password, 
+        email, 
+        num_doc, 
+        type_doc, 
+        telephone, 
+        photo,
+        position, 
+        id_department, 
+        id_boss, 
+        active 
+    } = req.body;
+    console.log(req.body);
+    if (!name || !lastname || !password || !email || !num_doc) {
+        return res.status(400).send({ msg: "Todos los campos obligatorios deben ser completados" });
+    }
 
     if (!password) {
         return res.status(400).send({ msg: "La contraseña es requerida" });
     }
 
-    const existingUser = await User.findOne({ email: email });
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
         return res.status(400).send({ msg: 'Ya existe un usuario con ese email' });
     }
 
-    const existingUser2 = await User.findOne({ num_doc: num_doc });
-    if (existingUser2) {
+    const existingUserByDoc = await User.findOne({ num_doc: num_doc });
+    if (existingUserByDoc) {
         return res.status(400).send({ msg: 'Ya existe un usuario con ese documento' });
     }
 
@@ -28,12 +49,13 @@ const register = async (req, res) => {
         email: email.toLowerCase(),
         password: hashPassword,
         num_doc,
+        type_doc,
         telephone,
         photo,
-        cargo,
-        id_departament,
-        id_jefe,
-        state,
+        position,
+        id_department,
+        id_boss,
+        active,
     });
 
     try {
@@ -43,6 +65,8 @@ const register = async (req, res) => {
         res.status(400).send({ msg: "Error al crear el usuario", error });
     }
 };
+
+
 
 
 const login = async (req, res) => {
@@ -61,7 +85,7 @@ const login = async (req, res) => {
     if (!check) {
         throw new Error("Contraseña incorrecta");
     }
-    if (!userStore.state) {
+    if (!userStore.active) {
         throw new Error("Usuario no autorizado o no activo");
     }
     res.status (200).send({

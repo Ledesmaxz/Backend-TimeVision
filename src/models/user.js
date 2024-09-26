@@ -11,10 +11,10 @@ const user = new Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String },
   photo: { type:String},
-  cargo: {type: String, required: true},
-  id_departament: { type: Number, require:true},
-  id_jefe: { type: Number, require:true},
-  state: {type: String, required: true}
+  position: {type: String, required: true},
+  id_department: { type: Number, require:true},
+  id_boss: { type: Number, require:true},
+  active: {type: Boolean, required: true}
 });
 
 module.exports = mongoose.model('UserCollection', user);
