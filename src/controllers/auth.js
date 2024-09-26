@@ -80,14 +80,14 @@ const login = async (req, res) => {
     const emailLowerCase = email.toLowerCase();
     const userStore = await User.findOne({ email: emailLowerCase }).exec()
     if (!userStore) {
-        throw new Error("El usuario no existe");
+        return res.status(401).send({ msg: 'Usuario o contraseña incorrectos' });
     }
     const check = await bcrypt.compare(password, userStore.password)
     if (!check) {
-        throw new Error("Contraseña incorrecta");
+        return res.status(401).send({ msg: 'Usuario o contraseña incorrectos' });
     }
     if (!userStore.active) {
-        throw new Error("Usuario no autorizado o no activo");
+        return res.status(401).send({ msg: 'Cuenta inactiva' });
     }
     res.status (200).send({
         access: jwt.createAccessToken (userStore),

@@ -58,6 +58,20 @@ const getRequest = async (req, res) => {
   }
 };
 
+const getMyRequests = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const requests = await Request.find({ id_user: userId });
+    if (!requests || requests.length === 0) {
+      return res.status(404).send({ msg: "No se encontraron solicitudes para este usuario" });
+    }
+    res.status(200).send(requests);
+  } catch (error) {
+    res.status(500).send({ msg: "Error del servidor", error: error.message });
+  }
+};
+
+
 const getRequests = async (req, res) => {
   try {
     const Requestes = await Request.find();
@@ -69,6 +83,7 @@ const getRequests = async (req, res) => {
 
 module.exports = {
   createRequest: [upload.none(), createRequest],
+  getMyRequests: [upload.none(), getMyRequests],
   getRequest,
   getRequests,
 };
