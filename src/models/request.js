@@ -8,8 +8,8 @@ const request = new Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
   attach: { type: String},
-  state: {type: String, required: true},
-  id_user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  state: {type: String, default:"pendiente"},
+  id_user: { type: mongoose.Schema.Types.ObjectId, ref: 'User'},
 });
 
 module.exports = mongoose.model('Request', request);

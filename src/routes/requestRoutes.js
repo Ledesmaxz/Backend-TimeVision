@@ -4,8 +4,9 @@ const { asureAuth } = require("../middleware/authenticated");
 
 const api= express.Router()
 
-api.post("/", request.createRequest);
-api.get("/me",asureAuth, request.getMyRequests);
+api.post("/", asureAuth, request.createRequest);
+api.post("/access", request.createRequestAccess);
+api.get("/me", asureAuth, request.getMyRequests);
 api.get("/:id", request.getRequest);
 api.get("/requests", request.getRequests);
 
