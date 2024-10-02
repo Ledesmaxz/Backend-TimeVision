@@ -1,5 +1,7 @@
 const User = require("../models/user");
 const bcrypt = require("bcrypt");
+const multer = require("multer");
+const upload = multer();
 
 const createUser= async (req, res)=> {   
     try {
@@ -19,8 +21,8 @@ const createUser= async (req, res)=> {
 
 const getMe= async(req,res)=>{
     try{
-        const{_id}= req.user;
-        const response = await User.findById(_id);
+        const userId= req.user._id;
+        const response = await User.findById(userId);
         if(!response){
             return res.status(400).send({msg: "No se ha encontrado usuario"});
         }
@@ -91,7 +93,7 @@ const deleteUser= async( req, res)=>{
 }
 
 module.exports = {
-    getMe,
+    getMe: [upload.none(), getMe],
     getUser,
     getUsers,
     createUser,

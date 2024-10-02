@@ -11,17 +11,17 @@ const createRequest = async (req, res) => {
     title, 
     description, 
     attach, 
-    state, 
-    id_user,
+    state 
   } = req.body;
   console.log(req.body);
-  if (!start_date || !end_date || !type || !title || !description || !attach || !state || !id_user) {
+  if (!start_date || !end_date || !type || !title || !description ) {
     return res.status(400).send({ msg: "Todos los campos obligatorios deben ser completados" });
   }
-
-  const existingUser = await User.findOne({ _id: id_user });
-  if (!existingUser) {
-      return res.status(400).send({ msg: 'No existe el usuario' });
+  const userId= req.user._id;
+  const response = await User.findById(userId);
+  console.log(userId);
+  if(!response){
+      return res.status(400).send({msg: "No se ha encontrado un usuario asociado"});
   }
 
   const request = new Request({
@@ -32,7 +32,7 @@ const createRequest = async (req, res) => {
       description,
       attach,
       state,
-      id_user
+      id_user: userId
   });
   
   try {
@@ -43,6 +43,36 @@ const createRequest = async (req, res) => {
   }
 };
 
+
+const createRequestAccess = async (req, res) => {
+  const {  
+    description
+  } = req.body;
+  console.log(req.body);
+  const descriptionF = description.toLowerCase()
+  if (!descriptionF ) {
+    return res.status(400).send({ msg: "No llego el correo" });
+  }
+  const today = new Date();
+  const formattedDate = today.toISOString().split('T')[0];  
+
+  const titleF = `Solicitud de Acceso correo: ${description}`
+
+  const request = new Request({
+      start_date: formattedDate,
+      end_date: formattedDate,
+      type: "Solicitud de Acceso",
+      title: titleF,
+      description: descriptionF,
+  });
+  
+  try {
+    const requestStorage = await request.save();
+    res.status(201).send(requestStorage);
+  } catch (error) {
+      res.status(400).send({ msg: "Error al crear el request", error });
+  }
+};
 
 const getRequest = async (req, res) => {
   try {
@@ -86,4 +116,5 @@ module.exports = {
   getMyRequests: [upload.none(), getMyRequests],
   getRequest,
   getRequests,
+  createRequestAccess: [upload.none(), createRequestAccess],
 };
