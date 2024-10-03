@@ -5,4 +5,4 @@ const departament = new Schema({
   name: { type: String, required: true },
 });
 
-module.exports = mongoose.model('Departamento', departament);
+module.exports = mongoose.model('Departament', departament);

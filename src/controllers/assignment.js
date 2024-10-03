@@ -1,32 +1,83 @@
 const Assignment = require("../models/assignment");
+const User = require("../models/user");
+const Shift = require("../models/shift");
+const multer = require("multer");
+const upload = multer();
+
+const mongoose = require('mongoose');
 
 const createAssignment = async (req, res) => {
-  try {
-    const AssignmentData = req.body;
-    const Assignment = new Assignment(AssignmentData);
+  const { 
+    id_user,
+    id_shift, 
+    time_start, 
+    time_end, 
+  } = req.body;
 
-    const AssignmentStored = await Assignment.save();
-    res.status(201).send(AssignmentStored);
+  if (!id_user || !id_shift || !time_start || !time_end) {
+    return res.status(400).send({ msg: "Todos los campos obligatorios deben ser completados" });
+  }
+
+  try {
+    if (!mongoose.isValidObjectId(id_user)) {
+      return res.status(400).send({ msg: "ID de usuario no válido" });
+    }
+    const userExists = await User.findById(id_user);
+    if (!userExists) {
+      return res.status(404).send({ msg: "Usuario no encontrado" });
+    }
+
+    if (!mongoose.isValidObjectId(id_shift)) {
+      return res.status(400).send({ msg: "ID de turno no válido" });
+    }
+    const shiftExists = await Shift.findById(id_shift);
+    if (!shiftExists) {
+      return res.status(404).send({ msg: "Turno no encontrado" });
+    }
+
+    const assignment = new Assignment({ 
+      id_user,
+      id_shift, 
+      time_start, 
+      time_end, 
+    });
+
+    const assignmentStored = await assignment.save();
+    res.status(201).send(assignmentStored);
   } catch (error) {
-    res
-      .status(400)
-      .send({ msg: "Error al crear la asignación", error: error.message });
+    res.status(500).send({ msg: "Error al crear la asignación", error: error.message });
+  }
+};
+
+const getMyAssignments = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const assignments = await Assignment.find({ id_user: userId });
+    if (!assignments || assignments.length === 0) {
+      return res.status(404).send({ msg: "No se encontraron asignaciones para este usuario" });
+    }
+    res.status(200).send(assignments);
+  } catch (error) {
+    res.status(500).send({ msg: "Error del servidor", error: error.message });
   }
 };
 
 const getAssignment = async (req, res) => {
   try {
     const { id } = req.params;
-    const Assignment = await Assignment.findById(id);
+    const assignment = await Assignment.findById(id);
 
-    if (!Assignment) {
+    if (!assignment) {
       return res.status(404).send({ msg: "No se encontró la asignación" });
     }
-    res.status(200).send(Assignment);
+    res.status(200).send(assignment);
   } catch (error) {
     res.status(500).send({ msg: "Error del servidor", error: error.message });
   }
 };
+
+
+
 
 const getAssignmentes = async (req, res) => {
   try {
@@ -81,8 +132,9 @@ const deleteAssignment = async (req, res) => {
 };
 
 module.exports = {
-  createAssignment,
+  createAssignment: [upload.none(), createAssignment],
   getAssignment,
+  getMyAssignments: [upload.none(), getMyAssignments],
   getAssignmentes,
   updateAssignment,
   deleteAssignment,

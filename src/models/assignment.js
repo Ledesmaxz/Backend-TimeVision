@@ -1,11 +1,11 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-const assignment = new Schema({
-  id_user: { type: Number, require: true },
-  id_shift: { type: Number, require: true },
-  time_start: { type: String, required: true },
-  time_end: { type: String, required: true },
+const assignmentSchema = new Schema({
+  id_user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  id_shift: { type: Schema.Types.ObjectId, ref: 'Shift', required: true },
+  time_start: { type: Date, required: true },
+  time_end: { type: Date, required: true },
 });
 
-module.exports = mongoose.model("Assignment", assignment);
+module.exports = mongoose.model('Assignment', assignmentSchema);
