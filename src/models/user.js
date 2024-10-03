@@ -14,7 +14,8 @@ const user = new Schema({
   position: {type: String, required: true},
   id_department: { type: Number, require:true},
   id_boss: { type: Number, require:true},
-  active: {type: Boolean, required: true}
+  active: {type: Boolean, default: false},
+  disabled: {type: Boolean, default: false}
 });
 
 module.exports = mongoose.model('UserCollection', user);

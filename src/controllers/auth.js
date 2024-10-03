@@ -99,6 +99,9 @@ const login = async (req, res) => {
     if (!userStore.active) {
         return res.status(401).send({ msg: 'Cuenta inactiva' });
     }
+    if (userStore.disabled) {
+        return res.status(401).send({ msg: 'Usuario o contraseña incorrectos' });
+    }
     res.status (200).send({
         access: jwt.createAccessToken (userStore),
         refresh: jwt.createRefreshToken (userStore),

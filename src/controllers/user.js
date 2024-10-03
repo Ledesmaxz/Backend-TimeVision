@@ -7,7 +7,7 @@ const upload = multer();
 const createUser= async (req, res)=> {   
     try {
         const userData = req.body;
-        const user= new User({...userData, active:false});
+        const user= new User({...userData, active:false, disabled:false});
 
         const salt =await bcrypt.genSalt(10);
         const hashedPassword =await bcrypt.hash(userData.password,salt);
