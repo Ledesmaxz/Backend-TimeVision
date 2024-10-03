@@ -3,6 +3,7 @@ const multer = require("multer");
 const bcrypt = require("bcryptjs");
 const User = require("../models/user");
 const jwt = require("../utils/jwt");
+const uploadFile = require('../utils/upload');
 
 const upload = multer();
 const register = async (req, res) => {
@@ -21,6 +22,12 @@ const register = async (req, res) => {
         id_boss, 
         active 
     } = req.body;
+
+    const file = req.file;
+    if (!file) {
+        return res.status(400).send({ msg: "La foto es requerida." });
+    }
+    
     console.log(req.body);
     if (!name || !lastname || !password || !email || !num_doc) {
         return res.status(400).send({ msg: "Todos los campos obligatorios deben ser completados" });
@@ -43,6 +50,9 @@ const register = async (req, res) => {
     const salt = bcrypt.genSaltSync(10);
     const hashPassword = bcrypt.hashSync(password, salt);
 
+    const textoURL = `${num_doc}-profile-image`;
+    const imageUrl = await uploadFile(file, textoURL);
+
     const user = new User({
         name,
         lastname,
@@ -51,7 +61,7 @@ const register = async (req, res) => {
         num_doc,
         type_doc,
         telephone,
-        photo,
+        photo: imageUrl,
         position,
         id_department,
         id_boss,
@@ -88,6 +98,9 @@ const login = async (req, res) => {
     }
     if (!userStore.active) {
         return res.status(401).send({ msg: 'Cuenta inactiva' });
+    }
+    if (userStore.disabled) {
+        return res.status(401).send({ msg: 'Usuario o contraseña incorrectos' });
     }
     res.status (200).send({
         access: jwt.createAccessToken (userStore),

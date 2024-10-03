@@ -15,6 +15,7 @@ api.post("/createuser", UserController.createUser);
 api.put("/:id",  UserController.updateUser);
 api.delete("/:id",  UserController.deleteUser);
 api.get("/me", asureAuth, UserController.getMe);
+api.post("/changepassword", asureAuth, UserController.changePassword);
 api.get("/users", UserController.getUsers);
 api.get("/:id", UserController.getUser);
 
