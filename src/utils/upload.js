@@ -7,35 +7,36 @@ const storage = new Storage({
   keyFilename: process.env.GOOGLE_CLOUD_KEYFILE,
 });
 
-const bucket = storage.bucket(process.env.GOOGLE_CLOUD_BUCKET_NAME);
+async function uploadFile(bucketName, fileBuffer, fileOutputName, mimetype) {
+  try {
+    const bucket = storage.bucket(bucketName);
+    const file = bucket.file(fileOutputName);
 
-const uploadFile = (file, ruta) => {
-  return new Promise((resolve, reject) => {
-    if (!file) {
-      return reject('No se proporcionó ningún archivo.');
-    }
-
-    const ext = path.extname(file.originalname);
-
-    const newFileName = `${ruta}${ext}`;
-
-    const blob = bucket.file(newFileName);
-    const blobStream = blob.createWriteStream({
-      resumable: false,
-      contentType: file.mimetype,
+    const stream = file.createWriteStream({
+      metadata: {
+        contentType: mimetype, 
+      },
+      resumable: false, 
     });
 
-    blobStream.on('error', (err) => {
-      reject('Error al subir la imagen a Google Cloud Storage: ' + err.message);
-    });
+    
+    stream.end(fileBuffer);
 
-    blobStream.on('finish', () => {
-      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-      resolve(publicUrl); 
-    });
+    return new Promise((resolve, reject) => {
+      stream.on('finish', () => {
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${file.name}`;
+        resolve(publicUrl); 
+      });
 
-    blobStream.end(file.buffer);
-  });
-};
+      stream.on('error', (err) => {
+        reject(`Error al subir la imagen: ${err.message}`);
+      });
+    });
+  } catch (error) {
+    console.error('Error al subir el archivo:', error);
+    throw error;
+  }
+}
+
 
 module.exports = uploadFile;

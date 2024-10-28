@@ -101,6 +101,35 @@ const getMyRequests = async (req, res) => {
   }
 };
 
+const getMyRequestsByDate = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { date } = req.body;
+    if (!date) {
+      return res.status(400).send({ msg: "La fecha es obligatoria" });
+    }
+
+
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const requests = await Request.find({
+      id_user: userId,
+      start_date: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    if (!requests || requests.length === 0) {
+      return res.status(404).send({ msg: "No se encontraron solicitudes para este usuario en la fecha indicada" });
+    }
+
+    res.status(200).send(requests);
+  } catch (error) {
+    res.status(500).send({ msg: "Error del servidor", error: error.message });
+  }
+};
+
 
 const getRequests = async (req, res) => {
   try {
@@ -114,6 +143,7 @@ const getRequests = async (req, res) => {
 module.exports = {
   createRequest: [upload.none(), createRequest],
   getMyRequests: [upload.none(), getMyRequests],
+  getMyRequestsByDate: [upload.none(), getMyRequestsByDate],
   getRequest,
   getRequests,
   createRequestAccess: [upload.none(), createRequestAccess],

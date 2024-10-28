@@ -5,55 +5,54 @@ const User = require("../models/user");
 const jwt = require("../utils/jwt");
 const uploadFile = require('../utils/upload');
 
-const upload = multer();
+const upload = multer({ storage: multer.memoryStorage() });
+
 const register = async (req, res) => {
-
-    const { 
-        name,
-        lastname, 
-        password, 
-        email, 
-        num_doc, 
-        type_doc, 
-        telephone, 
-        photo,
-        position, 
-        id_department, 
-        id_boss, 
-        active 
+    const {
+      name,
+      lastname,
+      password,
+      email,
+      num_doc,
+      type_doc,
+      telephone,
+      position,
+      id_department,
+      id_boss,
+      active,
     } = req.body;
-
-    const file = req.file;
+  
+    const file = req.file; 
     if (!file) {
-        return res.status(400).send({ msg: "La foto es requerida." });
+      return res.status(400).send({ msg: 'La foto es requerida.' });
     }
+    console.log(file);
     
-    console.log(req.body);
     if (!name || !lastname || !password || !email || !num_doc) {
-        return res.status(400).send({ msg: "Todos los campos obligatorios deben ser completados" });
-    }
-
-    if (!password) {
-        return res.status(400).send({ msg: "La contraseña es requerida" });
+      return res.status(400).send({
+        msg: 'Todos los campos obligatorios deben ser completados',
+      });
     }
 
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-        return res.status(400).send({ msg: 'Ya existe un usuario con ese email' });
+      return res.status(400).send({ msg: 'Ya existe un usuario con ese email' });
     }
-
+  
     const existingUserByDoc = await User.findOne({ num_doc: num_doc });
     if (existingUserByDoc) {
-        return res.status(400).send({ msg: 'Ya existe un usuario con ese documento' });
+      return res.status(400).send({ msg: 'Ya existe un usuario con ese documento' });
     }
 
     const salt = bcrypt.genSaltSync(10);
     const hashPassword = bcrypt.hashSync(password, salt);
+  
 
-    const textoURL = `${num_doc}-profile-image`;
-    const imageUrl = await uploadFile(file, textoURL);
-
-    const user = new User({
+    const fileName = `${num_doc}-profile-image${path.extname(file.originalname)}`;
+    try {
+      const imageUrl = await uploadFile(process.env.GOOGLE_CLOUD_BUCKET_NAME, file.buffer, fileName, file.mimetype);
+  
+      const user = new User({
         name,
         lastname,
         email: email.toLowerCase(),
@@ -61,20 +60,19 @@ const register = async (req, res) => {
         num_doc,
         type_doc,
         telephone,
-        photo: imageUrl,
+        photo: imageUrl, 
         position,
         id_department,
         id_boss,
         active,
-    });
-
-    try {
-        const userStorage = await user.save();
-        res.status(201).send(userStorage);
+      });
+  
+      const userStorage = await user.save();
+      res.status(201).send(userStorage);
     } catch (error) {
-        res.status(400).send({ msg: "Error al crear el usuario", error });
+      res.status(500).send({ msg: 'Error al subir la imagen', error });
     }
-};
+  };
 
 
 
