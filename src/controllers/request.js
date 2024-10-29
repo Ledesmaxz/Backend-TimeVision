@@ -1,45 +1,56 @@
 const Request = require("../models/request");
 const User = require("../models/user");
+const path = require("path");
 const multer = require("multer");
 const upload = multer();
+const { uploadFile } = require("../utils/upload");
 
 const createRequest = async (req, res) => {
-  const { 
-    start_date,
-    end_date, 
-    type, 
-    title, 
-    description, 
-    attach, 
-    state 
-  } = req.body;
-  console.log(req.body);
-  if (!start_date || !end_date || !type || !title || !description ) {
+  const { start_date, end_date, type, title, description, state } = req.body;
+  const file = req.file; 
+
+  if (!start_date || !end_date || !type || !title || !description) {
     return res.status(400).send({ msg: "Todos los campos obligatorios deben ser completados" });
   }
-  const userId= req.user._id;
+
+  const userId = req.user._id;
   const response = await User.findById(userId);
-  console.log(userId);
-  if(!response){
-      return res.status(400).send({msg: "No se ha encontrado un usuario asociado"});
+  
+  if (!response) {
+    return res.status(400).send({ msg: "No se ha encontrado un usuario asociado" });
+  }
+
+  let attachUrl = null;
+  if (file) {
+    const shortDate = new Date().toISOString().split("T")[0];
+    const newFileName = `excusa-medica-${shortDate}-${userId}${path.extname(file.originalname)}`;
+
+    try {
+      attachUrl = await uploadFile(process.env.GOOGLE_CLOUD_BUCKET_NAME, file.buffer, newFileName, file.mimetype);
+      console.log("Archivo subido exitosamente:", attachUrl);
+    } catch (error) {
+      console.error("Error al subir el archivo:", error);
+      return res.status(500).send({ msg: "Error al subir el archivo adjunto", error });
+    }
   }
 
   const request = new Request({
-      start_date,
-      end_date,
-      type,
-      title,
-      description,
-      attach,
-      state,
-      id_user: userId
+    start_date,
+    end_date,
+    type,
+    title,
+    description,
+    attach: attachUrl, 
+    state,
+    id_user: userId
   });
   
   try {
     const requestStorage = await request.save();
     res.status(201).send(requestStorage);
   } catch (error) {
-      res.status(400).send({ msg: "Error al crear el request", error });
+    console.error("Error al guardar la solicitud:", error);
+    res.status(400).send({ msg: "Error al crear el request", error });
   }
 };
 
@@ -101,6 +112,35 @@ const getMyRequests = async (req, res) => {
   }
 };
 
+const getMyRequestsByDate = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { date } = req.body;
+    if (!date) {
+      return res.status(400).send({ msg: "La fecha es obligatoria" });
+    }
+
+
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const requests = await Request.find({
+      id_user: userId,
+      start_date: { $gte: startOfDay, $lte: endOfDay }
+    });
+
+    if (!requests || requests.length === 0) {
+      return res.status(404).send({ msg: "No se encontraron solicitudes para este usuario en la fecha indicada" });
+    }
+
+    res.status(200).send(requests);
+  } catch (error) {
+    res.status(500).send({ msg: "Error del servidor", error: error.message });
+  }
+};
+
 
 const getRequests = async (req, res) => {
   try {
@@ -112,8 +152,9 @@ const getRequests = async (req, res) => {
 };
 
 module.exports = {
-  createRequest: [upload.none(), createRequest],
+  createRequest,
   getMyRequests: [upload.none(), getMyRequests],
+  getMyRequestsByDate: [upload.none(), getMyRequestsByDate],
   getRequest,
   getRequests,
   createRequestAccess: [upload.none(), createRequestAccess],

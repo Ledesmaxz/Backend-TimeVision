@@ -1,16 +1,13 @@
 const express = require("express");
 const AuthController = require("../controllers/auth");
 const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 const api = express.Router();
 
-const upload = multer({
-    storage: multer.memoryStorage(), 
-    limits: { fileSize: 10 * 1024 * 1024 }, 
-});
-
-api.post("/register", upload.single('photo'), AuthController.register);
+api.post("/foto", upload.single("photo"), AuthController.foto);
 api.post("/login", AuthController.login);
+api.post("/register", upload.single('photo'), AuthController.register);
 api.post("/refresh_access_token", AuthController.refreshAccessToken);
 
 module.exports = api;

@@ -1,86 +1,96 @@
 const express = require("express");
-const multer = require("multer");
+
 const bcrypt = require("bcryptjs");
 const User = require("../models/user");
 const jwt = require("../utils/jwt");
+
+const multer = require("multer");
 const uploadFile = require('../utils/upload');
+const path = require("path");
+const upload = multer({ storage: multer.memoryStorage() });
 
-const upload = multer();
 const register = async (req, res) => {
+  console.log("Campos de formulario:", req.body); 
+  console.log("Archivo recibido:", req.file); 
+  const { name, lastname, password, email, num_doc, type_doc, telephone, position, id_department, id_boss, active } = req.body;
 
-    const { 
-        name,
-        lastname, 
-        password, 
-        email, 
-        num_doc, 
-        type_doc, 
-        telephone, 
-        photo,
-        position, 
-        id_department, 
-        id_boss, 
-        active 
-    } = req.body;
+  const file = req.file;
+  if (!file) {
+    return res.status(400).send({ msg: 'La foto es requerida.' });
+  }
 
-    const file = req.file;
-    if (!file) {
-        return res.status(400).send({ msg: "La foto es requerida." });
-    }
-    
-    console.log(req.body);
-    if (!name || !lastname || !password || !email || !num_doc) {
-        return res.status(400).send({ msg: "Todos los campos obligatorios deben ser completados" });
-    }
+  if (!name || !lastname || !password || !email || !num_doc) {
+    return res.status(400).send({
+      msg: 'Todos los campos obligatorios deben ser completados',
+    });
+  }
 
-    if (!password) {
-        return res.status(400).send({ msg: "La contraseña es requerida" });
-    }
+  const existingUser = await User.findOne({ email: email.toLowerCase() });
+  if (existingUser) {
+    return res.status(400).send({ msg: 'Ya existe un usuario con ese email' });
+  }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-        return res.status(400).send({ msg: 'Ya existe un usuario con ese email' });
-    }
+  const existingUserByDoc = await User.findOne({ num_doc: num_doc });
+  if (existingUserByDoc) {
+    return res.status(400).send({ msg: 'Ya existe un usuario con ese documento' });
+  }
 
-    const existingUserByDoc = await User.findOne({ num_doc: num_doc });
-    if (existingUserByDoc) {
-        return res.status(400).send({ msg: 'Ya existe un usuario con ese documento' });
-    }
+  const salt = bcrypt.genSaltSync(10);
+  const hashPassword = bcrypt.hashSync(password, salt);
 
-    const salt = bcrypt.genSaltSync(10);
-    const hashPassword = bcrypt.hashSync(password, salt);
+  const fileName = `${num_doc}-profile-image${path.extname(file.originalname)}`;
 
-    const textoURL = `${num_doc}-profile-image`;
-    const imageUrl = await uploadFile(file, textoURL);
-
+  try {
+    const imageUrl = await uploadFile(process.env.GOOGLE_CLOUD_BUCKET_NAME, file.buffer, fileName, file.mimetype);
+    console.log("Imagen subida exitosamente:", imageUrl);
     const user = new User({
-        name,
-        lastname,
-        email: email.toLowerCase(),
-        password: hashPassword,
-        num_doc,
-        type_doc,
-        telephone,
-        photo: imageUrl,
-        position,
-        id_department,
-        id_boss,
-        active,
+      name,
+      lastname,
+      email: email.toLowerCase(),
+      password: hashPassword,
+      num_doc,
+      type_doc,
+      telephone,
+      photo: imageUrl,
+      position,
+      id_department,
+      id_boss,
+      active,
     });
 
-    try {
-        const userStorage = await user.save();
-        res.status(201).send(userStorage);
-    } catch (error) {
-        res.status(400).send({ msg: "Error al crear el usuario", error });
-    }
+    const userStorage = await user.save();
+    res.status(201).send(userStorage);
+  } catch (error) {
+    console.error("Error al subir la imagen o guardar el usuario:", error);
+    res.status(500).send({ msg: 'Error al subir la imagen o guardar el usuario', error });
+  }
 };
 
 
+const foto = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send({ msg: "No se recibió ningún archivo" });
+  }
+
+  try {
+    const fileName = `${Date.now()}-${req.file.originalname}`;
+    const bucketName = process.env.GOOGLE_CLOUD_BUCKET_NAME;
+    const imageUrl = await uploadFile(bucketName, req.file.buffer, fileName, req.file.mimetype);
+    
+    console.log("Archivo subido a Google Cloud Storage:", imageUrl);
+    
+    res.send({
+      msg: "Archivo subido correctamente a Google Cloud Storage",
+      url: imageUrl
+    });
+  } catch (error) {
+    console.error("Error al subir el archivo a Google Cloud Storage:", error);
+    res.status(500).send({ msg: "Error al subir la imagen a Google Cloud Storage", error });
+  }
+};
 
 
 const login = async (req, res) => {
-    console.log(req.body);
     const { email, password } = req.body;
 
     try {
@@ -128,7 +138,8 @@ const refreshAccessToken = (req, res) => {
 
 
 module.exports = {
-  register: [upload.none(), register],
+  register,
   login: [upload.none(), login],
+  foto,
   refreshAccessToken,
 };
