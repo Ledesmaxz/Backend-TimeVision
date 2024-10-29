@@ -1,15 +1,16 @@
 const express = require("express");
-const multer = require("multer");
+
 const bcrypt = require("bcryptjs");
 const User = require("../models/user");
 const jwt = require("../utils/jwt");
+
+const multer = require("multer");
 const uploadFile = require('../utils/upload');
 const path = require("path");
-
 const upload = multer({ storage: multer.memoryStorage() });
 
 const register = async (req, res) => {
-  console.log("Campos de formulario:", req.body); // Verificar campos de texto
+  console.log("Campos de formulario:", req.body); 
   console.log("Archivo recibido:", req.file); 
   const { name, lastname, password, email, num_doc, type_doc, telephone, position, id_department, id_boss, active } = req.body;
 
@@ -42,7 +43,6 @@ const register = async (req, res) => {
   try {
     const imageUrl = await uploadFile(process.env.GOOGLE_CLOUD_BUCKET_NAME, file.buffer, fileName, file.mimetype);
     console.log("Imagen subida exitosamente:", imageUrl);
- 
     const user = new User({
       name,
       lastname,
@@ -91,7 +91,6 @@ const foto = async (req, res) => {
 
 
 const login = async (req, res) => {
-    console.log(req.body);
     const { email, password } = req.body;
 
     try {
