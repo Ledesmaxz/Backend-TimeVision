@@ -1,5 +1,6 @@
 const Request = require("../models/request");
 const User = require("../models/user");
+const path = require("path");
 const multer = require("multer");
 const upload = multer();
 const { uploadFile } = require("../utils/upload");
@@ -151,7 +152,7 @@ const getRequests = async (req, res) => {
 };
 
 module.exports = {
-  createRequest: [upload.none(), createRequest],
+  createRequest,
   getMyRequests: [upload.none(), getMyRequests],
   getMyRequestsByDate: [upload.none(), getMyRequestsByDate],
   getRequest,
