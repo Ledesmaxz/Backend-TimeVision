@@ -1,5 +1,4 @@
 const { Storage } = require('@google-cloud/storage');
-const path = require('path');
 require('dotenv').config();
 
 const storage = new Storage({
@@ -14,29 +13,40 @@ async function uploadFile(bucketName, fileBuffer, fileOutputName, mimetype) {
 
     const stream = file.createWriteStream({
       metadata: {
-        contentType: mimetype, 
+        contentType: mimetype,
       },
-      resumable: false, 
+      resumable: false,
     });
 
-    
     stream.end(fileBuffer);
 
     return new Promise((resolve, reject) => {
       stream.on('finish', () => {
         const publicUrl = `https://storage.googleapis.com/${bucket.name}/${file.name}`;
-        resolve(publicUrl); 
+        resolve(publicUrl);
       });
 
       stream.on('error', (err) => {
-        reject(`Error al subir la imagen: ${err.message}`);
+        if (err.code === 403) {
+          reject("Error de permisos: Verifica que el bucket tiene acceso público o que la cuenta de servicio tiene permisos de escritura.");
+        } else if (err.code === 404) {
+          reject("Bucket no encontrado: Verifica el nombre del bucket y que esté correctamente especificado en la variable de entorno.");
+        } else {
+          reject(`Error al subir la imagen a Google Cloud Storage: ${err.message}`);
+        }
       });
     });
+    
   } catch (error) {
-    console.error('Error al subir el archivo:', error);
+    if (error.code === 'ENOENT') {
+      console.error("Error: No se encontró el archivo de credenciales. Verifica la ruta en GOOGLE_CLOUD_KEYFILE.");
+    } else if (error.code === 401) {
+      console.error("Error de autenticación: Verifica las credenciales en el archivo JSON.");
+    } else {
+      console.error("Error inesperado:", error.message);
+    }
     throw error;
   }
 }
-
 
 module.exports = uploadFile;
