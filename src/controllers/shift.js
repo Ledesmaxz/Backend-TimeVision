@@ -24,8 +24,6 @@ const createShift = async (req, res) => {
   endDate.setUTCHours(parseInt(endHour), parseInt(endMinute), 0, 0);
 
   const shift = new Shift({
-    time_start: startDate,
-    time_end: endDate, 
     name_shift, 
     start_date: startDate, 
     end_date: endDate
