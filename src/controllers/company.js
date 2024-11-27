@@ -1,16 +1,29 @@
 const Compania = require("../models/company");
+const multer = require("multer");
+const upload = multer();
 
 const createCompany = async (req, res) => {
-  try {
-    const CompanyData = req.body;
-    const compania = new Compania(CompanyData);
+  console.log("esta aaca");
+  
+  const { 
+    name,
+  } = req.body;
+  console.log(req.body);
+  
+  if (!name) {
+    return res.status(400).send({ msg: "Todos los campos obligatorios deben ser completados" });
+  }
 
-    const CompaniaStored = await compania.save();
-    res.status(201).send(CompaniaStored);
+
+  const company = new Compania({
+    name,
+  });
+
+  try {
+    const companyStorage = await company.save();
+    res.status(201).send(companyStorage);
   } catch (error) {
-    res
-      .status(400)
-      .send({ msg: "Error al crear el Compania", error: error.message });
+    res.status(400).send({ msg: "Error al crear la empresa", error });
   }
 };
 
@@ -56,7 +69,7 @@ const updateCompany = async (req, res) => {
 };
 
 module.exports = {
-  createCompany,
+  createCompany :[upload.none(), createCompany],
   getCompany,
   updateCompany,
 };

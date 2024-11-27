@@ -80,8 +80,7 @@ const register = async (req, res) => {
 
 
 const login = async (req, res) => {
-    console.log(req.body);
-    const { email, password } = req.body;
+    const { email, password, notification_token } = req.body;
 
     try {
     if (!email || !password) {
@@ -102,6 +101,11 @@ const login = async (req, res) => {
     if (userStore.disabled) {
         return res.status(401).send({ msg: 'Usuario o contraseña incorrectos' });
     }
+    if (notification_token) {
+        userStore.notification_token = notification_token; 
+        await userStore.save(); 
+    }
+  
     res.status (200).send({
         access: jwt.createAccessToken (userStore),
         refresh: jwt.createRefreshToken (userStore),

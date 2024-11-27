@@ -2,17 +2,10 @@ const Request = require("../models/request");
 const User = require("../models/user");
 const multer = require("multer");
 const upload = multer();
+const mongoose = require("mongoose");
 
 const createRequest = async (req, res) => {
-  const { 
-    start_date,
-    end_date, 
-    type, 
-    title, 
-    description, 
-    attach, 
-    state 
-  } = req.body;
+  const { start_date, end_date, type, title, description, attach, state } = req.body;
 
   if (!start_date || !end_date || !type || !title || !description) {
     return res.status(400).send({ msg: "Todos los campos obligatorios deben ser completados" });
@@ -34,7 +27,8 @@ const createRequest = async (req, res) => {
     attach,
     state,
     id_user: userId,
-    update: new Date(), 
+    create_date: new Date(),
+    update_date: new Date(),
   });
 
   try {
@@ -54,7 +48,7 @@ const createRequestAccess = async (req, res) => {
   }
 
   const today = new Date();
-  const formattedDate = today.toISOString().split('T')[0];
+  const formattedDate = today.toISOString().split("T")[0];
 
   const titleF = `Solicitud de Acceso correo: ${description}`;
 
@@ -64,7 +58,7 @@ const createRequestAccess = async (req, res) => {
     type: "Solicitud de Acceso",
     title: titleF,
     description: descriptionF,
-    update: new Date(), 
+    update: new Date(),
   });
 
   try {
@@ -128,11 +122,57 @@ const updateRequest = async (req, res) => {
   }
 };
 
+
+
+const getDepartmentRequests = async (req, res) => {
+  try {
+    const { rol, _id: userId } = req.user;
+
+    if (rol !== "jefe") {
+      return res.status(403).send({ msg: "No tienes permisos para acceder a esta información" });
+    }
+
+    const jefe = await User.findById(userId);
+    if (!jefe) {
+      return res.status(404).send({ msg: "Usuario no encontrado" });
+    }
+
+    const department = jefe.id_department;
+    if (!department) {
+      return res.status(400).send({ msg: "El jefe no tiene un departamento asignado" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(department)) {
+      return res.status(400).send({ msg: "El ID del departamento no es válido" });
+    }
+
+    const departmentId = new mongoose.Types.ObjectId(department);
+    const usersInDepartment = await User.find({ id_department: departmentId }).select("_id");
+
+    if (!usersInDepartment.length) {
+      return res.status(404).send({ msg: "No se encontraron usuarios en este departamento" });
+    }
+
+    const userIds = usersInDepartment.map((user) => user._id);
+    const requests = await Request.find({ id_user: { $in: userIds } });
+
+    if (!requests.length) {
+      return res.status(404).send({ msg: "No se encontraron solicitudes para este departamento" });
+    }
+
+    res.status(200).send(requests);
+  } catch (error) {
+    res.status(500).send({ msg: "Error del servidor", error: error.message });
+  }
+};
+
+
 module.exports = {
   createRequest: [upload.none(), createRequest],
   createRequestAccess: [upload.none(), createRequestAccess],
   getMyRequests: [upload.none(), getMyRequests],
   getRequest,
   getRequests,
-  updateRequest, 
+  updateRequest,
+  getDepartmentRequests: [upload.none(), getDepartmentRequests],
 };

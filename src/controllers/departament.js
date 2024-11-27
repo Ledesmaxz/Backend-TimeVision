@@ -1,33 +1,32 @@
 const Departamento = require("../models/departament");
+const multer = require("multer");
+const upload = multer();
 
 const createDepartament = async (req, res) => {
-  try {
-    const departamentData = req.body;
-    const departamento = new Departamento(departamentData);
+  const { 
+    name,
+    id_company, 
+  } = req.body;
 
-    const departamentoStored = await departamento.save();
-    res.status(201).send(departamentoStored);
+  if (!name || !id_company ) {
+    return res.status(400).send({ msg: "Todos los campos obligatorios deben ser completados" });
+  }
+
+
+  const deparment = new Departamento({
+    name,
+    id_company,
+  });
+
+  try {
+    const deparmentStorage = await deparment.save();
+    res.status(201).send(deparmentStorage);
   } catch (error) {
-    res
-      .status(400)
-      .send({ msg: "Error al crear el departamento", error: error.message });
+    res.status(400).send({ msg: "Error al crear el deparmento", error });
   }
 };
 
-const getDepartament = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const departamento = await Departamento.findById(id);
-
-    if (!departamento) {
-      return res.status(404).send({ msg: "No se encontró el departamento" });
-    }
-    res.status(200).send(departamento);
-  } catch (error) {
-    res.status(500).send({ msg: "Error del servidor", error: error.message });
-  }
-};
-
+//No funcional ni probada
 const updateDepartament = async (req, res) => {
   try {
     const { id } = req.params;
@@ -56,7 +55,6 @@ const updateDepartament = async (req, res) => {
 };
 
 module.exports = {
-  createDepartament,
-  getDepartament,
+  createDepartament:[upload.none(), createDepartament],
   updateDepartament,
 };

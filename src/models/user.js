@@ -11,10 +11,11 @@ const user = new Schema({
   password: { type: String },
   photo: { type:String},
   position: {type: String, required: true},
-  id_department: { type: Number, require:true},
-  id_boss: { type: Number, require:true},
+  id_department: { type: mongoose.Schema.Types.ObjectId, ref: 'Deparment'},
+  id_boss: { type: mongoose.Schema.Types.ObjectId, ref: 'User'},
   active: {type: Boolean, default: false},
-  disabled: {type: Boolean, default: false}
+  disabled: {type: Boolean, default: false},
+  notification_token : { type:String},
 });
 
 module.exports = mongoose.model('UserCollection', user);
