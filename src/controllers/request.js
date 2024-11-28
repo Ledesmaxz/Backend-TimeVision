@@ -105,9 +105,20 @@ const getRequests = async (req, res) => {
   }
 };
 
+
 const updateRequest = async (req, res) => {
+
   const { id } = req.params;
-  const updateData = { ...req.body, update: new Date() };
+  
+  const { state } = req.body
+  
+  const updateData = { state, update: new Date() };
+  
+  const { rol } = req.user;
+
+    if (rol !== "jefe") {
+      return res.status(403).send({ msg: "No tienes permisos para acceder a esta información" });
+    }
 
   try {
     const request = await Request.findByIdAndUpdate(id, updateData, { new: true });
@@ -173,6 +184,6 @@ module.exports = {
   getMyRequests: [upload.none(), getMyRequests],
   getRequest,
   getRequests,
-  updateRequest,
+  updateRequest: [upload.none(), updateRequest],
   getDepartmentRequests: [upload.none(), getDepartmentRequests],
 };
