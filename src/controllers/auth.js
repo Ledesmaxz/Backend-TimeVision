@@ -83,7 +83,7 @@ const register = async (req, res) => {
 };
 
 const login = async (req, res) => {
-  const privateKey = fs.readFileSync("privateKey.pem", "utf8");
+  const privateKey = process.env.PRIVATE_KEY;
 
   const key = new NodeRSA(privateKey);
   key.setOptions({ encryptionScheme: "pkcs1" });
