@@ -18,7 +18,7 @@ const routes_system = (app) => {
     routes.use("/", auth_routes_access);      
     routes.use("/shift", shift_routes_access);  
     routes.use("/assignment", assignment_routes_access);      
-    routes.use("/deparment", deparment_routes_access);  
+    routes.use("/department", deparment_routes_access);  
     routes.use("/company", company_routes_access);  
 
     app.use("/api/v1", routes);

@@ -75,21 +75,37 @@ const getUser= async(req, res)=>{
     }
 };
 
-const getUsers= async(req, res)=>{
-    try{
-        const {active}= req.query;
-        let response= null;
-
-        if(active==undefined){
-            response= await User.find();
-        }else{
-            response=await User.find({active});
+const getUsersDepartment= async(req, res)=>{
+    try {
+        const { rol } = req.user;
+    
+        if (rol !== "jefe") {
+          return res.status(403).send({ msg: "No tienes permisos para acceder a esta información" });
         }
-        res.status(200).send(response)
-    }catch(error){
-        res.status(500).send({msg:"Error del servidor"})
-    }
+
+        const userId = req.user._id;
+        const jefe = await User.findById(userId);
+        if (!jefe) {
+          return res.status(404).send({ msg: "Usuario no encontrado" });
+        }
+    
+        const departmentId = jefe.id_department;
+        if (!departmentId) {
+          return res.status(400).send({ msg: "El jefe no tiene un departamento asignado" });
+        }
+    
+        const usersInDepartment = await User.find({ id_department: departmentId });
+    
+        if (!usersInDepartment.length) {
+          return res.status(404).send({ msg: "No se encontraron usuarios en este departamento" });
+        }
+    
+        res.status(200).send(usersInDepartment);
+      } catch (error) {
+        res.status(500).send({ msg: "Error del servidor", error: error.message });
+      }
 };
+
 const updateUser = async( req, res)=>{
     try{
         const {id}= req.params;
@@ -124,7 +140,7 @@ module.exports = {
     getMe: [upload.none(), getMe],
     changePassword: [upload.none(), changePassword],
     getUser,
-    getUsers,
+    getUsersDepartment,
     createUser,
     updateUser,
     deleteUser,
