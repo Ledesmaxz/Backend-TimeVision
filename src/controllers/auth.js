@@ -6,6 +6,7 @@ const jwt = require("../utils/jwt");
 const uploadFile = require("../utils/upload");
 const NodeRSA = require("node-rsa");
 const fs = require("fs");
+const { Buffer } = require('buffer');
 
 const upload = multer();
 
@@ -30,7 +31,6 @@ const register = async (req, res) => {
     return res.status(400).send({ msg: "La foto es requerida." });
   }
 
-  console.log(req.body);
   if (!name || !lastname || !password || !email || !num_doc) {
     return res
       .status(400)
@@ -83,17 +83,14 @@ const register = async (req, res) => {
 };
 
 const login = async (req, res) => {
-  const privateKey = process.env.PRIVATE_KEY;
-
-  const key = new NodeRSA(privateKey);
-  key.setOptions({ encryptionScheme: "pkcs1" });
-
-  const { email, password, notification_token } = req.body;
+  
+  const { email, password: encodedPassword, notification_token } = req.body;
 
   try {
-    if (!email || !password) {
+    if (!email || !encodedPassword) {
       throw new Error("El email y la contraseña son requeridos");
     }
+    const password = Buffer.from(encodedPassword, 'base64').toString();
 
     const emailLowerCase = email.toLowerCase();
     const userStore = await User.findOne({ email: emailLowerCase }).exec();
@@ -101,8 +98,7 @@ const login = async (req, res) => {
       return res.status(401).send({ msg: "Usuario o contraseña incorrectos" });
     }
 
-    const decrypted = key.decrypt(password, "utf8");
-    const check = await bcrypt.compare(decrypted, userStore.password);
+    const check = await bcrypt.compare(password, userStore.password);
 
     if (!check) {
       return res.status(401).send({ msg: "Usuario o contraseña incorrectos" });
