@@ -7,11 +7,12 @@ const upload = multer();
 const mongoose = require('mongoose');
 
 const createAssignment = async (req, res) => {
-  const { id_user, id_shift, time_start, time_end } = req.body;
-  
-  console.log(req.body);
+  const { 
+    id_user,
+    id_shift, 
+  } = req.body;
 
-  if (!id_user || !id_shift || !time_start || !time_end) {
+  if (!id_user || !id_shift) {
     return res.status(400).send({ msg: "Todos los campos obligatorios deben ser completados" });
   }
 
@@ -32,9 +33,7 @@ const createAssignment = async (req, res) => {
 
     const assignment = new Assignment({
       id_user,
-      id_shift,
-      time_start,
-      time_end,
+      id_shift, 
     });
 
     const assignmentStored = await assignment.save();
@@ -126,10 +125,50 @@ const deleteAssignment = async (req, res) => {
   }
 };
 
+
+const getDepartmentAssignments = async (req, res) => {
+  try {
+    const { rol } = req.user;
+
+    if (rol !== "jefe") {
+      return res.status(403).send({ msg: "No tienes permisos para acceder a esta información" });
+    }
+
+    const userId = req.user._id;
+    const jefe = await User.findById(userId);
+    if (!jefe) {
+      return res.status(404).send({ msg: "Usuario no encontrado" });
+    }
+
+    const departmentId = jefe.id_department;
+    if (!departmentId) {
+      return res.status(400).send({ msg: "El jefe no tiene un departamento asignado" });
+    }
+
+    const usersInDepartment = await User.find({ id_department: departmentId }).select("_id");
+
+    if (!usersInDepartment.length) {
+      return res.status(404).send({ msg: "No se encontraron usuarios en este departamento" });
+    }
+
+    const userIds = usersInDepartment.map(user => user._id);
+    const assignments = await Assignment.find({ id_user: { $in: userIds } });
+
+    if (!assignments.length) {
+      return res.status(404).send({ msg: "No se encontraron asignaciones para este departamento" });
+    }
+
+    res.status(200).send(assignments);
+  } catch (error) {
+    res.status(500).send({ msg: "Error del servidor", error: error.message });
+  }
+};
+
 module.exports = {
   createAssignment: [upload.none(), createAssignment],
   getAssignment,
   getMyAssignments: [upload.none(), getMyAssignments],
+  getDepartmentAssignments: [upload.none(), getDepartmentAssignments],
   getAssignmentes,
   updateAssignment,
   deleteAssignment,

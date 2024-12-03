@@ -1,10 +1,11 @@
 const express = require("express");
 const departament = require("../controllers/departament");
+const { asureAuth } = require("../middleware/authenticated");
 
 const api= express.Router()
 
-api.post("/createDepartament", departament.createDepartament);
+api.post("/create", departament.createDepartament);
+api.get("/:id",asureAuth,  departament.getDepartment);
 api.put("/:id",  departament.updateDepartament);
-api.get("/departament/me", departament.getDepartament);
 
 module.exports = api;

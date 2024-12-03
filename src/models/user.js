@@ -9,13 +9,14 @@ const user = new Schema({
   telephone: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String },
-  photo: { type: String },
-  position: { type: String, required: true },
-  id_department: { type: Number, required: true },
-  id_boss: { type: Number, required: true },
-  active: { type: Boolean, default: false },
-  disabled: { type: Boolean, default: false }
-}); 
-
-module.exports = mongoose.model('usercollections', user);
+  photo: { type:String},
+  position: {type: String, required: true},
+  id_department: { type: mongoose.Schema.Types.ObjectId, ref: 'Deparment'},
+  id_boss: { type: mongoose.Schema.Types.ObjectId, ref: 'User'},
+  active: {type: Boolean, default: false},
+  disabled: {type: Boolean, default: false},
+  notification_token : { type:String},
+  resetPasswordToken: String,
+  resetPasswordExpiry: Date
+});
 

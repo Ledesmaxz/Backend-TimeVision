@@ -1,39 +1,58 @@
-const Departamento = require("../models/departament");
+const departament = require("../models/departament");
+const User = require("../models/user");
+const multer = require("multer");
+const upload = multer();
 
 const createDepartament = async (req, res) => {
-  try {
-    const departamentData = req.body;
-    const departamento = new Departamento(departamentData);
+  const { 
+    name,
+    id_company, 
+  } = req.body;
 
-    const departamentoStored = await departamento.save();
-    res.status(201).send(departamentoStored);
+  if (!name || !id_company ) {
+    return res.status(400).send({ msg: "Todos los campos obligatorios deben ser completados" });
+  }
+
+
+  const deparment = new departament({
+    name,
+    id_company,
+  });
+
+  try {
+    const deparmentStorage = await deparment.save();
+    res.status(201).send(deparmentStorage);
   } catch (error) {
-    res
-      .status(400)
-      .send({ msg: "Error al crear el departamento", error: error.message });
+    res.status(400).send({ msg: "Error al crear el deparmento", error });
   }
 };
 
-const getDepartament = async (req, res) => {
+const getDepartment = async (req, res) => {
   try {
     const { id } = req.params;
-    const departamento = await Departamento.findById(id);
-
-    if (!departamento) {
-      return res.status(404).send({ msg: "No se encontró el departamento" });
+    const userId= req.user._id;
+    const response = await User.findById(userId);
+    if(!response){
+        return res.status(400).send({msg: "No se ha encontrado usuario"});
     }
-    res.status(200).send(departamento);
+    const Departament = await departament.findById(id);
+
+    if (!Departament) {
+      return res.status(404).send({ msg: "No se encontró el departament" });
+    }
+    res.status(200).send(Departament);
   } catch (error) {
     res.status(500).send({ msg: "Error del servidor", error: error.message });
   }
 };
 
+//No funcional ni probada
 const updateDepartament = async (req, res) => {
   try {
     const { id } = req.params;
     const departamentData = req.body;
 
-    const departamentoUpdated = await Departamento.findByIdAndUpdate(
+    const departamentoUpdated = await departament.findByIdAndUpdate(
       { _id: id },
       departamentData,
       { new: true }
@@ -56,7 +75,7 @@ const updateDepartament = async (req, res) => {
 };
 
 module.exports = {
-  createDepartament,
-  getDepartament,
+  createDepartament:[upload.none(), createDepartament],
   updateDepartament,
+  getDepartment,
 };

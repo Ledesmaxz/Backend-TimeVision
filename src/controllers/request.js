@@ -3,35 +3,20 @@ const User = require("../models/user");
 const path = require("path");
 const multer = require("multer");
 const upload = multer();
-const { uploadFile } = require("../utils/upload");
+const mongoose = require("mongoose");
 
 const createRequest = async (req, res) => {
-  const { start_date, end_date, type, title, description, state } = req.body;
-  const file = req.file; 
+  const { start_date, end_date, type, title, description, attach, state } = req.body;
 
   if (!start_date || !end_date || !type || !title || !description) {
     return res.status(400).send({ msg: "Todos los campos obligatorios deben ser completados" });
   }
 
   const userId = req.user._id;
-  const response = await User.findById(userId);
-  
-  if (!response) {
+  const user = await User.findById(userId);
+
+  if (!user) {
     return res.status(400).send({ msg: "No se ha encontrado un usuario asociado" });
-  }
-
-  let attachUrl = null;
-  if (file) {
-    const shortDate = new Date().toISOString().split("T")[0];
-    const newFileName = `excusa-medica-${shortDate}-${userId}${path.extname(file.originalname)}`;
-
-    try {
-      attachUrl = await uploadFile(process.env.GOOGLE_CLOUD_BUCKET_NAME, file.buffer, newFileName, file.mimetype);
-      console.log("Archivo subido exitosamente:", attachUrl);
-    } catch (error) {
-      console.error("Error al subir el archivo:", error);
-      return res.status(500).send({ msg: "Error al subir el archivo adjunto", error });
-    }
   }
 
   const request = new Request({
@@ -40,60 +25,60 @@ const createRequest = async (req, res) => {
     type,
     title,
     description,
-    attach: attachUrl, 
+    attach,
     state,
-    id_user: userId
+    id_user: userId,
+    create_date: new Date(),
+    update_date: new Date(),
   });
-  
+
   try {
     const requestStorage = await request.save();
     res.status(201).send(requestStorage);
   } catch (error) {
-    console.error("Error al guardar la solicitud:", error);
     res.status(400).send({ msg: "Error al crear el request", error });
   }
 };
 
-
 const createRequestAccess = async (req, res) => {
-  const {  
-    description
-  } = req.body;
-  console.log(req.body);
-  const descriptionF = description.toLowerCase()
-  if (!descriptionF ) {
-    return res.status(400).send({ msg: "No llego el correo" });
-  }
-  const today = new Date();
-  const formattedDate = today.toISOString().split('T')[0];  
+  const { description } = req.body;
 
-  const titleF = `Solicitud de Acceso correo: ${description}`
+  const descriptionF = description.toLowerCase();
+  if (!descriptionF) {
+    return res.status(400).send({ msg: "No llegó el correo" });
+  }
+
+  const today = new Date();
+  const formattedDate = today.toISOString().split("T")[0];
+
+  const titleF = `Solicitud de Acceso correo: ${description}`;
 
   const request = new Request({
-      start_date: formattedDate,
-      end_date: formattedDate,
-      type: "Solicitud de Acceso",
-      title: titleF,
-      description: descriptionF,
+    start_date: formattedDate,
+    end_date: formattedDate,
+    type: "Solicitud de Acceso",
+    title: titleF,
+    description: descriptionF,
+    update: new Date(),
   });
-  
+
   try {
     const requestStorage = await request.save();
     res.status(201).send(requestStorage);
   } catch (error) {
-      res.status(400).send({ msg: "Error al crear el request", error });
+    res.status(400).send({ msg: "Error al crear el request", error });
   }
 };
 
 const getRequest = async (req, res) => {
   try {
     const { id } = req.params;
-    const Request = await Request.findById(id);
+    const request = await Request.findById(id);
 
-    if (!Request) {
-      return res.status(404).send({ msg: "No se encontró la Request" });
+    if (!request) {
+      return res.status(404).send({ msg: "No se encontró la solicitud" });
     }
-    res.status(200).send(Request);
+    res.status(200).send(request);
   } catch (error) {
     res.status(500).send({ msg: "Error del servidor", error: error.message });
   }
@@ -112,27 +97,79 @@ const getMyRequests = async (req, res) => {
   }
 };
 
-const getMyRequestsByDate = async (req, res) => {
+const getRequests = async (req, res) => {
   try {
-    const userId = req.user._id;
-    const { date } = req.body;
-    if (!date) {
-      return res.status(400).send({ msg: "La fecha es obligatoria" });
+    const requests = await Request.find();
+    res.status(200).send(requests);
+  } catch (error) {
+    res.status(500).send({ msg: "Error del servidor", error: error.message });
+  }
+};
+
+
+const updateRequest = async (req, res) => {
+
+  const { id } = req.params;
+  
+  const { state } = req.body
+  
+  const updateData = { state, update: new Date() };
+  
+  const { rol } = req.user;
+
+    if (rol !== "jefe") {
+      return res.status(403).send({ msg: "No tienes permisos para acceder a esta información" });
     }
 
+  try {
+    const request = await Request.findByIdAndUpdate(id, updateData, { new: true });
 
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    if (!request) {
+      return res.status(404).send({ msg: "No se encontró la solicitud" });
+    }
 
-    const requests = await Request.find({
-      id_user: userId,
-      start_date: { $gte: startOfDay, $lte: endOfDay }
-    });
+    res.status(200).send(request);
+  } catch (error) {
+    res.status(500).send({ msg: "Error al actualizar la solicitud", error: error.message });
+  }
+};
 
-    if (!requests || requests.length === 0) {
-      return res.status(404).send({ msg: "No se encontraron solicitudes para este usuario en la fecha indicada" });
+
+
+const getDepartmentRequests = async (req, res) => {
+  try {
+    const { rol, _id: userId } = req.user;
+
+    if (rol !== "jefe") {
+      return res.status(403).send({ msg: "No tienes permisos para acceder a esta información" });
+    }
+
+    const jefe = await User.findById(userId);
+    if (!jefe) {
+      return res.status(404).send({ msg: "Usuario no encontrado" });
+    }
+
+    const department = jefe.id_department;
+    if (!department) {
+      return res.status(400).send({ msg: "El jefe no tiene un departamento asignado" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(department)) {
+      return res.status(400).send({ msg: "El ID del departamento no es válido" });
+    }
+
+    const departmentId = new mongoose.Types.ObjectId(department);
+    const usersInDepartment = await User.find({ id_department: departmentId }).select("_id");
+
+    if (!usersInDepartment.length) {
+      return res.status(404).send({ msg: "No se encontraron usuarios en este departamento" });
+    }
+
+    const userIds = usersInDepartment.map((user) => user._id);
+    const requests = await Request.find({ id_user: { $in: userIds } });
+
+    if (!requests.length) {
+      return res.status(404).send({ msg: "No se encontraron solicitudes para este departamento" });
     }
 
     res.status(200).send(requests);
@@ -142,20 +179,13 @@ const getMyRequestsByDate = async (req, res) => {
 };
 
 
-const getRequests = async (req, res) => {
-  try {
-    const Requestes = await Request.find();
-    res.status(200).send(Requestes);
-  } catch (error) {
-    res.status(500).send({ msg: "Error del servidor", error: error.message });
-  }
-};
-
 module.exports = {
-  createRequest,
+  createRequest: [upload.none(), createRequest],
+  createRequestAccess: [upload.none(), createRequestAccess],
   getMyRequests: [upload.none(), getMyRequests],
   getMyRequestsByDate: [upload.none(), getMyRequestsByDate],
   getRequest,
   getRequests,
-  createRequestAccess: [upload.none(), createRequestAccess],
+  updateRequest: [upload.none(), updateRequest],
+  getDepartmentRequests: [upload.none(), getDepartmentRequests],
 };

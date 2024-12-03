@@ -10,6 +10,8 @@ const request = new Schema({
   attach: { type: String},
   state: {type: String, default:"pendiente"},
   id_user: { type: mongoose.Schema.Types.ObjectId, ref: 'User'},
+  update_date: { type: Date, default: Date.now },
+  create_date: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Request', request);
