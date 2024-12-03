@@ -7,6 +7,7 @@ const uploadFile = require("../utils/upload");
 const NodeRSA = require("node-rsa");
 const fs = require("fs");
 const { Buffer } = require('buffer');
+const { sendResetPasswordEmail, generateResetCode } = require('../sendEmail/send-email');
 
 const upload = multer();
 
@@ -142,8 +143,116 @@ const refreshAccessToken = (req, res) => {
   });
 };
 
+const requestPasswordReset = async (req, res) => {
+  try {
+    console.log('Recibida solicitud de reset para:', req.body.email);
+    const { email } = req.body;
+    const user = await User.findOne({ email: email.toLowerCase() });
+    
+    if (!user) {
+      console.log('Usuario no encontrado:', email);
+      return res.status(404).send({ msg: "Verifica tu correo para restablecer tu contraseña" });
+    }
+
+    console.log('Usuario encontrado, generando código...');
+    const resetCode = generateResetCode();
+    const resetCodeExpiry = Date.now() + 3600000; // 1 hora
+
+    user.resetPasswordToken = resetCode;
+    user.resetPasswordExpiry = resetCodeExpiry;
+    await user.save();
+    console.log('Código guardado en base de datos:', resetCode);
+
+    const emailSent = await sendResetPasswordEmail(email, resetCode);
+    console.log('Resultado del envío:', emailSent);
+    
+    if (!emailSent) {
+      throw new Error('Error al enviar el correo');
+    }
+
+    res.status(200).send({ 
+      msg: "Si el correo existe, recibirás instrucciones para restablecer tu contraseña" 
+    });
+
+  } catch (error) {
+    console.error('Error completo en recuperación de contraseña:', error);
+    res.status(500).send({ 
+      msg: "Error al procesar la solicitud" 
+    });
+  }
+};
+
+const verifyResetCode = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    console.log('Verificando código para:', email, 'Código:', code);
+
+    const user = await User.findOne({ 
+      email: email.toLowerCase(),
+      resetPasswordToken: code,
+      resetPasswordExpiry: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      console.log('Código inválido o expirado');
+      return res.status(400).send({ 
+        msg: "Código inválido o expirado" 
+      });
+    }
+
+    console.log('Código verificado exitosamente');
+    res.status(200).send({ 
+      msg: "Código verificado correctamente" 
+    });
+
+  } catch (error) {
+    console.error('Error en verificación de código:', error);
+    res.status(500).send({ 
+      msg: "Error al verificar el código" 
+    });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { email, token, newPassword } = req.body;
+    console.log('Restableciendo contraseña para:', email);
+
+    const user = await User.findOne({
+      email: email.toLowerCase(),
+      resetPasswordToken: token,
+      resetPasswordExpiry: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      console.log('Token inválido o expirado');
+      return res.status(400).send({ msg: "Token inválido o expirado" });
+    }
+
+    if (!newPassword) {
+      console.log('Nueva contraseña no proporcionada');
+      return res.status(400).send({ msg: "Nueva contraseña requerida" });
+    }
+
+    user.password = bcrypt.hashSync(newPassword, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpiry = undefined;
+    await user.save();
+
+    console.log('Contraseña actualizada exitosamente');
+    res.status(200).send({ msg: "Contraseña actualizada correctamente" });
+
+  } catch (error) {
+    console.error('Error completo en restablecimiento de contraseña:', error);
+    res.status(500).send({ msg: "Error al restablecer la contraseña" });
+  }
+};
+
 module.exports = {
   register: [upload.none(), register],
   login: [upload.none(), login],
   refreshAccessToken,
+  requestPasswordReset: [upload.none(), requestPasswordReset],
+  verifyResetCode: [upload.none(), verifyResetCode],
+  resetPassword
 };

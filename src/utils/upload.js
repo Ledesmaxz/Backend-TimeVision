@@ -1,5 +1,4 @@
 const { Storage } = require('@google-cloud/storage');
-const path = require('path');
 require('dotenv').config();
 
 const storage = new Storage({
@@ -7,35 +6,43 @@ const storage = new Storage({
   keyFilename: process.env.GOOGLE_CLOUD_KEYFILE,
 });
 
-const bucket = storage.bucket(process.env.GOOGLE_CLOUD_BUCKET_NAME);
+async function uploadFile(bucketName, fileBuffer, fileOutputName, mimetype) {
+  try {
+    const bucket = storage.bucket(bucketName);
+    const file = bucket.file(fileOutputName);
 
-const uploadFile = (file, ruta) => {
-  return new Promise((resolve, reject) => {
-    if (!file) {
-      return reject('No se proporcionó ningún archivo.');
-    }
-
-    const ext = path.extname(file.originalname);
-
-    const newFileName = `${ruta}${ext}`;
-
-    const blob = bucket.file(newFileName);
-    const blobStream = blob.createWriteStream({
+    const stream = file.createWriteStream({
+      metadata: {
+        contentType: mimetype,
+      },
       resumable: false,
-      contentType: file.mimetype,
     });
 
-    blobStream.on('error', (err) => {
-      reject('Error al subir la imagen a Google Cloud Storage: ' + err.message);
+    stream.end(fileBuffer);
+
+    await new Promise((resolve, reject) => {
+      stream.on('finish', resolve);
+      stream.on('error', reject);
     });
 
-    blobStream.on('finish', () => {
-      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-      resolve(publicUrl); 
-    });
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${file.name}`;
+    return publicUrl;
+  } catch (error) {
+    console.error("Error al subir el archivo:", error.message);
+    throw error;
+  }
+}
 
-    blobStream.end(file.buffer);
-  });
-};
+async function deleteFile(bucketName, fileName) {
+  try {
+    const bucket = storage.bucket(bucketName);
+    const file = bucket.file(fileName);
+    await file.delete();
+    console.log(`Archivo ${fileName} eliminado del bucket ${bucketName}.`);
+  } catch (error) {
+    console.error("Error al eliminar el archivo:", error.message);
+    throw error;
+  }
+}
 
-module.exports = uploadFile;
+module.exports = { uploadFile, deleteFile };
