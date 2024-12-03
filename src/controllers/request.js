@@ -183,7 +183,6 @@ module.exports = {
   createRequest: [upload.none(), createRequest],
   createRequestAccess: [upload.none(), createRequestAccess],
   getMyRequests: [upload.none(), getMyRequests],
-  getMyRequestsByDate: [upload.none(), getMyRequestsByDate],
   getRequest,
   getRequests,
   updateRequest: [upload.none(), updateRequest],

@@ -2,9 +2,7 @@ const User = require("../models/user");
 const { uploadFile, deleteFile } = require("../utils/upload");
 const path = require("path");
 const bcrypt = require("bcrypt");
-const path = require("path");
 const jwt = require("../utils/jwt");
-const { uploadFile, deleteFile } = require("../utils/upload");
 const multer = require("multer");
 const upload = multer();
 
@@ -130,45 +128,6 @@ const updateUser = async( req, res)=>{
 
     }
 }
-
-const isValidGoogleCloudUrl = (url) => {
-    const regex = /^https:\/\/storage\.googleapis\.com\/[a-zA-Z0-9-_]+\/[a-zA-Z0-9-_.]+$/;
-    return regex.test(url);
-};
-
-const updatePhoto = async (req, res) => {
-    const file = req.file;
-    const userId = req.user._id;
-  
-    if (!file) {
-      return res.status(400).send({ msg: "La nueva foto es requerida." });
-    }
-  
-    try {
-      const user = await User.findById(userId);
-      if (!user) {
-        return res.status(404).send({ msg: "Usuario no encontrado" });
-      }
-
-      if (user.photo && isValidGoogleCloudUrl(user.photo)) {
-        const oldFileName = user.photo.split("/").pop();
-        await deleteFile(process.env.GOOGLE_CLOUD_BUCKET_NAME, oldFileName);
-      }
-  
-      const newFileName = `${user.num_doc}-profile-image-${Date.now()}${path.extname(file.originalname)}`;
-      const imageUrl = await uploadFile(process.env.GOOGLE_CLOUD_BUCKET_NAME, file.buffer, newFileName, file.mimetype);
-  
-
-      user.photo = imageUrl;
-      await user.save();
-  
-      res.status(200).send({ msg: "Foto actualizada correctamente", photo: imageUrl });
-    } catch (error) {
-      console.error("Error al actualizar la foto:", error);
-      res.status(500).send({ msg: "Error al actualizar la foto", error });
-    }
-  };
-  
 
 const deleteUser= async( req, res)=>{
     try{

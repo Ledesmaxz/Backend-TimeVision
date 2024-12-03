@@ -1,5 +1,5 @@
 const express = require("express");
-
+const multer = require("multer");
 const bcrypt = require("bcryptjs");
 const User = require("../models/user");
 const jwt = require("../utils/jwt");
@@ -139,6 +139,28 @@ const refreshAccessToken = (req, res) => {
       });
     }
   });
+};
+
+const foto = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send({ msg: "No se recibió ningún archivo" });
+  }
+
+  try {
+    const fileName = `${Date.now()}-${req.file.originalname}`;
+    const bucketName = process.env.GOOGLE_CLOUD_BUCKET_NAME;
+    const imageUrl = await uploadFile(bucketName, req.file.buffer, fileName, req.file.mimetype);
+    
+    console.log("Archivo subido a Google Cloud Storage:", imageUrl);
+    
+    res.send({
+      msg: "Archivo subido correctamente a Google Cloud Storage",
+      url: imageUrl
+    });
+  } catch (error) {
+    console.error("Error al subir el archivo a Google Cloud Storage:", error);
+    res.status(500).send({ msg: "Error al subir la imagen a Google Cloud Storage", error });
+  }
 };
 
 const requestPasswordReset = async (req, res) => {

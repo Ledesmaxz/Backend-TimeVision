@@ -3,8 +3,6 @@ const UserController = require("../controllers/user");
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 const { asureAuth } = require("../middleware/authenticated");
-const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
 
 const api= express.Router()
 
