@@ -11,9 +11,8 @@ if (!fs.existsSync(uploadDir)) {
 const md_upload = multiparty({ uploadDir: uploadDir });
 const api= express.Router()
 
-api.post("/createuser", UserController.createUser);
-api.put("/:id",  UserController.updateUser);
-api.delete("/:id",  UserController.deleteUser);
+api.post("/createuser", asureAuth, UserController.createUser);
+api.patch("/update/:id", asureAuth,  UserController.updateUser);
 api.get("/me", asureAuth, UserController.getMe);
 api.post("/changepassword", asureAuth, UserController.changePassword);
 api.get("/users", UserController.getUsers);
