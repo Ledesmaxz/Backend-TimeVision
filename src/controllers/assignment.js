@@ -130,39 +130,116 @@ const deleteAssignment = async (req, res) => {
 
 const getDepartmentAssignments = async (req, res) => {
   try {
-    const { rol } = req.user;
-
-    if (rol !== "jefe") {
-      return res.status(403).send({ msg: "No tienes permisos para acceder a esta información" });
+    const { rol, _id } = req.user;
+    
+    if (rol !== "jefe" && rol !== "admin") {
+      return res.status(403).json({ 
+        success: false, 
+        msg: "No tienes permisos para acceder a esta información" 
+      });
     }
 
-    const userId = req.user._id;
-    const jefe = await User.findById(userId);
-    if (!jefe) {
-      return res.status(404).send({ msg: "Usuario no encontrado" });
+    const userComplete = await User.findById(_id);
+    if (!userComplete || !userComplete.id_department) {
+      return res.status(400).json({ 
+        success: false, 
+        msg: "Usuario sin departamento asignado" 
+      });
     }
 
-    const departmentId = jefe.id_department;
-    if (!departmentId) {
-      return res.status(400).send({ msg: "El jefe no tiene un departamento asignado" });
+    const departmentId = userComplete.id_department.toString();
+    
+
+    const usersInDepartment = await User.find({ 
+      id_department: departmentId 
+    }).select('_id');
+    
+    const userIds = usersInDepartment.map(user => new mongoose.Types.ObjectId(user._id));
+
+
+    const simpleAssignments = await Assignment.find({
+      id_user: { $in: userIds }
+    });
+
+    if (simpleAssignments.length > 0) {
+      const assignments = await Assignment.aggregate([
+        {
+          $match: {
+            id_user: { $in: userIds }
+          }
+        },
+        {
+          $lookup: {
+            from: "usercollections", 
+            localField: "id_user",
+            foreignField: "_id",
+            as: "user"
+          }
+        },
+        {
+          $lookup: {
+            from: "shifts",
+            localField: "id_shift",
+            foreignField: "_id",
+            as: "shift"
+          }
+        },
+        {
+          $match: {
+            "user": { $ne: [] },
+            "shift": { $ne: [] }
+          }
+        },
+        {
+          $unwind: "$user"
+        },
+        {
+          $unwind: "$shift"
+        },
+        {
+          $project: {
+            _id: 1,
+            id_user: 1,
+            id_shift: 1,
+            user: {
+              _id: "$user._id",
+              name: "$user.name",
+              lastname: "$user.lastname",
+              photo: "$user.photo",
+              email: "$user.email",
+              position: "$user.position",
+              telephone: "$user.telephone"
+            },
+            shift: {
+              _id: "$shift._id",
+              name_shift: "$shift.name_shift",
+              start_date: "$shift.start_date",
+              end_date: "$shift.end_date"
+            }
+          }
+        }
+      ]);
+
+      if (assignments.length > 0) {
+        return res.status(200).json({
+          success: true,
+          data: assignments
+        });
+      }
     }
+    return res.status(200).json({ 
+      success: true, 
+      data: [],
+      msg: "No se encontraron asignaciones para este departamento" 
+    });
 
-    const usersInDepartment = await User.find({ id_department: departmentId }).select("_id");
-
-    if (!usersInDepartment.length) {
-      return res.status(404).send({ msg: "No se encontraron usuarios en este departamento" });
-    }
-
-    const userIds = usersInDepartment.map(user => user._id);
-    const assignments = await Assignment.find({ id_user: { $in: userIds } });
-
-    if (!assignments.length) {
-      return res.status(404).send({ msg: "No se encontraron asignaciones para este departamento" });
-    }
-
-    res.status(200).send(assignments);
   } catch (error) {
-    res.status(500).send({ msg: "Error del servidor", error: error.message });
+    console.error("Error detallado en getDepartmentAssignments:", error);
+    res.status(500).json({ 
+      success: false, 
+      msg: "Error del servidor", 
+      error: error.message 
+    });
   }
 };
 
