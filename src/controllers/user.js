@@ -1,8 +1,10 @@
 const User = require("../models/user");
+const Request = require("../models/request");
 const bcrypt = require("bcrypt");
 const jwt = require("../utils/jwt");
 const multer = require("multer");
 const upload = multer();
+const mongoose = require("mongoose");
 
 const createUser = async (req, res) => {
     const { rol, _id: userId } = req.user;
@@ -202,7 +204,74 @@ const updateUser = async (req, res) => {
         });
     }
  };
- 
+
+ const getStatusUsers = async (req, res) => {
+    try {
+        const { rol, _id: adminId } = req.user;
+
+        if (rol !== "jefe") {
+            return res.status(403).send({ 
+                msg: "No tienes permisos para consultar usuarios. Se requiere rol de jefe" 
+            });
+        }
+
+        const admin = await User.findById(adminId);
+        if (!admin) {
+            return res.status(404).send({ msg: "Usuario administrador no encontrado" });
+        }
+
+        const departmentId = new mongoose.Types.ObjectId(admin.id_department);
+        const usersInDepartment = await User.find({ id_department: departmentId });
+
+        if (usersInDepartment.length === 0) {
+            return res.status(200).send({ 
+                msg: "No hay usuarios en el departamento", 
+                percentageWorking: 0, 
+                percentageNotWorking: 0, 
+                percentageOnLeave: 0 
+            });
+        }
+
+        const totalUsers = usersInDepartment.length;
+        const workingUsers = usersInDepartment.filter(user => user.working === true).length;
+
+        // Obtén las solicitudes de tipo licencia aprobadas
+        const today = new Date();
+        const approvedLeaves = await Request.find({ 
+            type: "Licencia", 
+            state: "Aceptada", 
+            start_date: { $lte: today }, 
+            end_date: { $gte: today },
+            id_user: { $in: usersInDepartment.map(user => user._id) }
+        });
+
+        const usersOnLeave = approvedLeaves.map(request => request.id_user);
+        const uniqueUsersOnLeave = new Set(usersOnLeave);
+        const notWorkingUsers = totalUsers - workingUsers - uniqueUsersOnLeave.size;
+
+        const percentageWorking = ((workingUsers / totalUsers) * 100).toFixed(2);
+        const percentageNotWorking = ((notWorkingUsers / totalUsers) * 100).toFixed(2);
+        const percentageOnLeave = ((uniqueUsersOnLeave.size / totalUsers) * 100).toFixed(2);
+
+        res.status(200).send({
+            msg: "Estado de usuarios calculado exitosamente",
+            totalUsers,
+            workingUsers,
+            notWorkingUsers,
+            usersOnLeave: uniqueUsersOnLeave.size,
+            percentageWorking: `${percentageWorking}%`,
+            percentageNotWorking: `${percentageNotWorking}%`,
+            percentageOnLeave: `${percentageOnLeave}%`
+        });
+    } catch (error) {
+        console.error("Error en getStatusUsers:", error);
+        res.status(500).send({ msg: "Error del servidor" });
+    }
+};
+
+
+
+
 const deleteUser= async( req, res)=>{
     try{
         const {id}= req.params;
@@ -218,6 +287,7 @@ module.exports = {
     changePassword: [upload.none(), changePassword],
     getUser,
     getUsers,
+    getStatusUsers: [upload.none(), getStatusUsers],
     createUser: [upload.none(), createUser],
     updateUser: [upload.none(), updateUser],
 };

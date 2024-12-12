@@ -15,6 +15,7 @@ const user = new Schema({
   id_boss: { type: mongoose.Schema.Types.ObjectId, ref: 'User'},
   active: {type: Boolean, default: false},
   disabled: {type: Boolean, default: false},
+  working: {type: Boolean, default: false},
   notification_token : { type:String},
 });
 

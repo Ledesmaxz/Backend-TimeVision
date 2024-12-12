@@ -14,9 +14,11 @@ const api= express.Router()
 api.post("/createuser", asureAuth, UserController.createUser);
 api.patch("/update/:id", asureAuth,  UserController.updateUser);
 api.get("/me", asureAuth, UserController.getMe);
+api.get("/statususers", asureAuth, UserController.getStatusUsers);
 api.post("/changepassword", asureAuth, UserController.changePassword);
 api.get("/users", UserController.getUsers);
 api.get("/:id", UserController.getUser);
+
 
 module.exports = api;
  
