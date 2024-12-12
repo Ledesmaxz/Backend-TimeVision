@@ -8,6 +8,7 @@ api.post("/", asureAuth, request.createRequest);
 api.post("/access", request.createRequestAccess);
 api.get("/me", asureAuth, request.getMyRequests);
 //api.get("/:id", request.getRequest);
+api.get("/TenUpdates", asureAuth, request.getDepartmentRequestsUpdate);
 api.patch("/update/:id", asureAuth, request.updateRequest);
 api.get("/requests", request.getRequests);
 api.get("/requestsDeparment", asureAuth, request.getDepartmentRequests);

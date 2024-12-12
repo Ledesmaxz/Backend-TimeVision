@@ -178,6 +178,58 @@ const getDepartmentRequests = async (req, res) => {
 };
 
 
+const getDepartmentRequestsUpdate = async (req, res) => {
+  try {
+    const { rol, _id: userId } = req.user;
+
+    if (rol !== "jefe") {
+      return res.status(403).send({ msg: "No tienes permisos para acceder a esta información" });
+    }
+
+    // Buscar al jefe logueado
+    const jefe = await User.findById(userId);
+    if (!jefe) {
+      return res.status(404).send({ msg: "Usuario no encontrado" });
+    }
+
+    const department = jefe.id_department;
+    if (!department) {
+      return res.status(400).send({ msg: "El jefe no tiene un departamento asignado" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(department)) {
+      return res.status(400).send({ msg: "El ID del departamento no es válido" });
+    }
+
+    const departmentId = new mongoose.Types.ObjectId(department);
+
+    // Buscar usuarios del departamento
+    const usersInDepartment = await User.find({ id_department: departmentId }).select("_id");
+
+    if (!usersInDepartment.length) {
+      return res.status(404).send({ msg: "No se encontraron usuarios en este departamento" });
+    }
+
+    const userIds = usersInDepartment.map((user) => user._id);
+
+    // Buscar las 10 solicitudes más recientes
+    const requests = await Request.find({ id_user: { $in: userIds } })
+      .sort({ update_date: -1 }) 
+      .limit(10);
+
+    if (!requests.length) {
+      return res.status(404).send({ msg: "No se encontraron solicitudes para este departamento" });
+    }
+
+    res.status(200).send(requests);
+  } catch (error) {
+    res.status(500).send({ msg: "Error del servidor", error: error.message });
+  }
+};
+
+
+
+
 module.exports = {
   createRequest: [upload.none(), createRequest],
   createRequestAccess: [upload.none(), createRequestAccess],
@@ -186,4 +238,5 @@ module.exports = {
   getRequests,
   updateRequest: [upload.none(), updateRequest],
   getDepartmentRequests: [upload.none(), getDepartmentRequests],
+  getDepartmentRequestsUpdate: [upload.none(), getDepartmentRequestsUpdate],
 };
