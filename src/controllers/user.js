@@ -343,8 +343,11 @@ module.exports = {
     getMe: [upload.none(), getMe],
     changePassword: [upload.none(), changePassword],
     getUser,
-    getUsers,
+    getUsersDepartment,
+    updatePhoto,
+    deleteUser,
     getStatusUsers: [upload.none(), getStatusUsers],
     createUser: [upload.none(), createUser],
     updateUser: [upload.none(), updateUser],
 };
+
