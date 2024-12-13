@@ -95,49 +95,38 @@ const foto = async (req, res) => {
 };
 
 
+
 const login = async (req, res) => {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
   try {
-    if (!email || !encodedPassword) {
+  if (!email || !password) {
       throw new Error("El email y la contraseña son requeridos");
-    }
-    const password = Buffer.from(encodedPassword, 'base64').toString();
-
-    const emailLowerCase = email.toLowerCase();
-    const userStore = await User.findOne({ email: emailLowerCase }).exec();
-    if (!userStore) {
-      return res.status(401).send({ msg: "Usuario o contraseña incorrectos" });
-    }
-
-    const check = await bcrypt.compare(password, userStore.password);
-
-    if (!check) {
-      return res.status(401).send({ msg: "Usuario o contraseña incorrectos" });
-    }
-
-    if (!userStore.active) {
-      return res.status(401).send({ msg: "Cuenta inactiva" });
-    }
-
-    if (userStore.disabled) {
-      return res.status(401).send({ msg: "Usuario o contraseña incorrectos" });
-    }
-
-    if (notification_token) {
-      userStore.notification_token = notification_token;
-      await userStore.save();
-    }
-
-    res.status(200).send({
-      access: jwt.createAccessToken(userStore),
-      refresh: jwt.createRefreshToken(userStore),
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(400).send({ msg: error.message });
   }
-};
+  const emailLowerCase = email.toLowerCase();
+  const userStore = await User.findOne({ email: emailLowerCase }).exec()
+  if (!userStore) {
+      return res.status(401).send({ msg: 'Usuario o contraseña incorrectos' });
+  }
+  const check = await bcrypt.compare(password, userStore.password)
+  if (!check) {
+      return res.status(401).send({ msg: 'Usuario o contraseña incorrectos' });
+  }
+  if (!userStore.active) {
+      return res.status(401).send({ msg: 'Cuenta inactiva' });
+  }
+  if (userStore.disabled) {
+      return res.status(401).send({ msg: 'Usuario o contraseña incorrectos' });
+  }
+  res.status (200).send({
+      access: jwt.createAccessToken (userStore),
+      refresh: jwt.createRefreshToken (userStore),
+  });
+  } catch (error){
+      res.status (400).send({ msg: error.message });
+  }
+}
+
 
 const refreshAccessToken = (req, res) => {
   const { token } = req.body;

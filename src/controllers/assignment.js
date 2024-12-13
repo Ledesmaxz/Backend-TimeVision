@@ -254,7 +254,7 @@ const getAutomaticAsignments = async (req, res) => {
   try {
     const { rol, _id } = req.user;
 
-    // Validar permisos del usuario
+
     if (rol !== "jefe" && rol !== "admin") {
       return res.status(403).json({
         success: false,
@@ -262,7 +262,6 @@ const getAutomaticAsignments = async (req, res) => {
       });
     }
 
-    // Obtener información del usuario
     const userComplete = await User.findById(_id);
     if (!userComplete || !userComplete.id_department) {
       return res.status(400).json({
@@ -273,15 +272,12 @@ const getAutomaticAsignments = async (req, res) => {
 
     const departmentId = userComplete.id_department.toString();
 
-    // Obtener los empleados del departamento
     const usersInDepartment = await User.find({
       id_department: departmentId
     }).select('name');
 
-    // Crear una lista de nombres de los empleados
-    //const employeeNames = usersInDepartment.map(user => user.name);
+    const employeeNames = usersInDepartment.map(user => user.name);
 
-    // Validar entrada para cantidad de semanas
     //const { numWeeks } = req.body;
     const numWeeks = 2;
     if (!numWeeks || typeof numWeeks !== 'number' || numWeeks < 1) {
@@ -291,13 +287,10 @@ const getAutomaticAsignments = async (req, res) => {
       });
     }
 
-    // Definir los turnos disponibles
     const shifts = ['Mañana', 'Tarde', 'Noche'];
 
-    // Llamar a la función de asignación
     const assignedSchedule = assignShiftsToEmployees(employeeNames, shifts, numWeeks);
 
-    // Responder con el resultado
     return res.status(200).json({
       success: true,
       data: assignedSchedule,
