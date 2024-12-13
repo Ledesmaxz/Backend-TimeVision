@@ -1,7 +1,9 @@
 const User = require("../models/user");
 const Request = require("../models/request");
 const bcrypt = require("bcrypt");
+const path = require("path");
 const jwt = require("../utils/jwt");
+const { uploadFile, deleteFile } = require("../utils/upload");
 const multer = require("multer");
 const upload = multer();
 const mongoose = require("mongoose");
@@ -132,20 +134,35 @@ const getUser= async(req, res)=>{
     }
 };
 
-const getUsers= async(req, res)=>{
-    try{
-        const {active}= req.query;
-        let response= null;
-
-        if(active==undefined){
-            response= await User.find();
-        }else{
-            response=await User.find({active});
+const getUsersDepartment= async(req, res)=>{
+    try {
+        const { rol } = req.user;
+    
+        if (rol !== "jefe") {
+          return res.status(403).send({ msg: "No tienes permisos para acceder a esta información" });
         }
-        res.status(200).send(response)
-    }catch(error){
-        res.status(500).send({msg:"Error del servidor"})
-    }
+
+        const userId = req.user._id;
+        const jefe = await User.findById(userId);
+        if (!jefe) {
+          return res.status(404).send({ msg: "Usuario no encontrado" });
+        }
+    
+        const departmentId = jefe.id_department;
+        if (!departmentId) {
+          return res.status(400).send({ msg: "El jefe no tiene un departamento asignado" });
+        }
+    
+        const usersInDepartment = await User.find({ id_department: departmentId });
+    
+        if (!usersInDepartment.length) {
+          return res.status(404).send({ msg: "No se encontraron usuarios en este departamento" });
+        }
+    
+        res.status(200).send(usersInDepartment);
+      } catch (error) {
+        res.status(500).send({ msg: "Error del servidor", error: error.message });
+      }
 };
 
 const updateUser = async (req, res) => {
@@ -281,6 +298,46 @@ const deleteUser= async( req, res)=>{
         res.status(400).send({msg: "Error al eliminar usuario"})
     }
 }
+
+const isValidGoogleCloudUrl = (url) => {
+    const regex = /^https:\/\/storage\.googleapis\.com\/[a-zA-Z0-9-_]+\/[a-zA-Z0-9-_.]+$/;
+    return regex.test(url);
+};
+
+
+const updatePhoto = async (req, res) => {
+    const file = req.file;
+    const userId = req.user._id;
+  
+    if (!file) {
+      return res.status(400).send({ msg: "La nueva foto es requerida." });
+    }
+  
+    try {
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).send({ msg: "Usuario no encontrado" });
+      }
+
+      if (user.photo && isValidGoogleCloudUrl(user.photo)) {
+        const oldFileName = user.photo.split("/").pop();
+        await deleteFile(process.env.GOOGLE_CLOUD_BUCKET_NAME, oldFileName);
+      }
+  
+      const newFileName = `${user.num_doc}-profile-image-${Date.now()}${path.extname(file.originalname)}`;
+      const imageUrl = await uploadFile(process.env.GOOGLE_CLOUD_BUCKET_NAME, file.buffer, newFileName, file.mimetype);
+  
+
+      user.photo = imageUrl;
+      await user.save();
+  
+      res.status(200).send({ msg: "Foto actualizada correctamente", photo: imageUrl });
+    } catch (error) {
+      console.error("Error al actualizar la foto:", error);
+      res.status(500).send({ msg: "Error al actualizar la foto", error });
+    }
+  };
+  
 
 module.exports = {
     getMe: [upload.none(), getMe],

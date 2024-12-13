@@ -17,6 +17,8 @@ const user = new Schema({
   disabled: {type: Boolean, default: false},
   working: {type: Boolean, default: false},
   notification_token : { type:String},
+  resetPasswordToken: String,
+  resetPasswordExpiry: Date
 });
 
 module.exports = mongoose.model('UserCollection', user);
