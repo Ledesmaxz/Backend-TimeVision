@@ -153,7 +153,7 @@ const getUsersDepartment= async(req, res)=>{
           return res.status(400).send({ msg: "El jefe no tiene un departamento asignado" });
         }
     
-        const usersInDepartment = await User.find({ id_department: departmentId });
+        const usersInDepartment = await User.find({ id_department: departmentId , id_boss: { $ne: null }});
     
         if (!usersInDepartment.length) {
           return res.status(404).send({ msg: "No se encontraron usuarios en este departamento" });

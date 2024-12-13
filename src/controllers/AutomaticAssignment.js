@@ -1,161 +1,83 @@
-// simulated_annealing_assignment.js
-
-const assignShiftsToEmployees = (employees, shifts, numWeeks, options = {}) => {
+const assignShiftsToEmployees = (employees, shifts, startDate, endDate, options = {}) => {
     const randomizeArray = (arr) => arr.sort(() => Math.random() - 0.5);
-  
-    // Helper functions
-    const assignShiftsWeekly = (employees, shifts, excludedNightEmployees, weekendShiftCount, nightShiftEmployees) => {
-      const weeklyAssignment = Object.fromEntries(shifts.map((shift) => [shift, []]));
-  
-      let employeeIndex = 0;
-      randomizeArray(employees);
-  
-      const numEmployeesPerShift = Math.floor(employees.length / shifts.length);
-      let extraEmployees = employees.length % shifts.length;
-  
-      for (const shift of shifts) {
-        const count = numEmployeesPerShift + (extraEmployees > 0 ? 1 : 0);
-        extraEmployees--;
-  
-        while (weeklyAssignment[shift].length < count) {
-          const employee = employees[employeeIndex];
-          if (shift === "Noche" && excludedNightEmployees.has(employee)) {
-            employeeIndex = (employeeIndex + 1) % employees.length;
-            continue;
-          }
-          weeklyAssignment[shift].push(employee);
-          if (shift === "Noche") nightShiftEmployees.add(employee);
-          employeeIndex = (employeeIndex + 1) % employees.length;
-        }
-      }
-  
-      // Weekend assignment
-      const weekendAssignment = { Sábado: {}, Domingo: {} };
-      for (const day of ["Sábado", "Domingo"]) {
-        weekendAssignment[day] = Object.fromEntries(shifts.map((shift) => [shift, []]));
-        const weekendEmployees = new Set();
-        for (const shift of shifts) {
-          while (weekendAssignment[day][shift].length < weekendShiftCount) {
-            const employee = employees[employeeIndex];
-  
-            // Restriction: Skip employees who worked night shifts during the week
-            if (options.restrictWeekendAfterNightShift && nightShiftEmployees.has(employee)) {
-              employeeIndex = (employeeIndex + 1) % employees.length;
-              continue;
-            }
-  
-            if (weekendEmployees.has(employee)) {
-              employeeIndex = (employeeIndex + 1) % employees.length;
-              continue;
-            }
-            weekendAssignment[day][shift].push(employee);
-            weekendEmployees.add(employee);
-            employeeIndex = (employeeIndex + 1) % employees.length;
-          }
-        }
-      }
-  
-      return { weeklyAssignment, weekendAssignment };
-    };
-  
-    const evaluateSchedule = (schedule, excludedNightEmployees, lastWeekNightEmployees) => {
-      let penalty = 0;
-  
-      const weekendEmployees = { Mañana: new Set(), Tarde: new Set(), Noche: new Set() };
-      for (const day of ["Sábado", "Domingo"]) {
-        for (const shift of shifts) {
-          for (const employee of schedule[day][shift]) {
-            if (weekendEmployees[shift].has(employee)) {
-              penalty++;
-            }
-            weekendEmployees[shift].add(employee);
-          }
-        }
-      }
-  
-      for (const employee of lastWeekNightEmployees) {
-        if (schedule["Lunes"].Noche.includes(employee)) {
-          penalty += 5;
-        }
-      }
-  
-      return penalty;
-    };
-  
-    const simulatedAnnealing = (
-      employees,
-      shifts,
-      excludedNightEmployees,
-      weekendShiftCount,
-      lastWeekNightEmployees,
-      numIterations = 1000,
-      initialTemperature = 1000,
-      coolingRate = 0.99
-    ) => {
-      let currentSchedule = {};
-      for (const day of ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]) {
-        currentSchedule[day] = Object.fromEntries(shifts.map((shift) => [shift, []]));
-      }
-  
-      let bestSchedule = currentSchedule;
-      let bestPenalty = Infinity;
-      let temperature = initialTemperature;
-  
-      for (let iteration = 0; iteration < numIterations; iteration++) {
+
+    const assignShiftsDailyWithLimit = (employees, shifts, excludedNightEmployees, maxDailyIterations = 100) => {
+        const dailyAssignment = Object.fromEntries(shifts.map((shift) => [shift, []]));
         const nightShiftEmployees = new Set();
-        const { weeklyAssignment, weekendAssignment } = assignShiftsWeekly(
-          employees,
-          shifts,
-          excludedNightEmployees,
-          weekendShiftCount,
-          nightShiftEmployees
-        );
-  
-        const newSchedule = { ...currentSchedule };
-        for (const day of ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]) {
-          for (const shift of shifts) {
-            newSchedule[day][shift] = [...weeklyAssignment[shift]];
-          }
+
+        let iteration = 0;
+        let employeeIndex = 0;
+
+        randomizeArray(employees);
+
+        while (iteration < maxDailyIterations) {
+            for (const shift of shifts) {
+                if (dailyAssignment[shift].length >= Math.floor(employees.length / shifts.length)) continue;
+
+                const employee = employees[employeeIndex];
+
+                if (shift === "Noche" && excludedNightEmployees.has(employee)) {
+                    employeeIndex = (employeeIndex + 1) % employees.length;
+                    continue;
+                }
+
+                dailyAssignment[shift].push(employee);
+                if (shift === "Noche") nightShiftEmployees.add(employee);
+                employeeIndex = (employeeIndex + 1) % employees.length;
+            }
+
+            const allShiftsFilled = shifts.every(
+                (shift) => dailyAssignment[shift].length >= Math.floor(employees.length / shifts.length)
+            );
+
+            if (allShiftsFilled) break;
+            iteration++;
         }
-        for (const day of ["Sábado", "Domingo"]) {
-          newSchedule[day] = { ...weekendAssignment[day] };
+
+        if (iteration >= maxDailyIterations) {
+            console.error("Límite de iteraciones alcanzado para este día. Turnos incompletos.");
+            throw new Error("No se pudo asignar turnos para este día debido a restricciones.");
         }
-  
-        const penalty = evaluateSchedule(newSchedule, excludedNightEmployees, lastWeekNightEmployees);
-        if (penalty < bestPenalty || Math.random() < Math.exp((bestPenalty - penalty) / temperature)) {
-          bestSchedule = newSchedule;
-          bestPenalty = penalty;
-        }
-        temperature *= coolingRate;
-      }
-  
-      return bestSchedule;
+
+        return { dailyAssignment, nightShiftEmployees };
     };
-  
+
     const schedules = [];
+    const currentDate = new Date(startDate);
+    const end = new Date(endDate);
+
     let excludedNightEmployees = new Set();
-    let lastWeekNightEmployees = new Set();
-    const weekendShiftCount = 1;
-  
-    for (let week = 0; week < numWeeks; week++) {
-      const bestSchedule = simulatedAnnealing(
-        employees,
-        shifts,
-        excludedNightEmployees,
-        weekendShiftCount,
-        lastWeekNightEmployees
-      );
-  
-      // Update excluded employees to prevent night shifts two weeks in a row
-      excludedNightEmployees = new Set([...
-        new Set(bestSchedule["Lunes"].Noche)]);
-      lastWeekNightEmployees = new Set(bestSchedule["Lunes"].Noche);
-  
-      schedules.push(bestSchedule);
+
+    while (currentDate <= end) {
+        const dayName = currentDate.toLocaleDateString('es-CO', { weekday: 'long' });
+
+        try {
+            const { dailyAssignment, nightShiftEmployees } = assignShiftsDailyWithLimit(
+                employees,
+                shifts,
+                excludedNightEmployees
+            );
+
+            schedules.push({
+                date: new Date(currentDate),
+                shifts: dailyAssignment,
+            });
+
+            if (dayName === "domingo") {
+                excludedNightEmployees = new Set();
+            } else {
+                excludedNightEmployees = new Set([...nightShiftEmployees]);
+            }
+
+            //console.log(`Turnos asignados para el día ${dayName}:`, dailyAssignment);
+        } catch (error) {
+            console.error(`Error asignando turnos para el día ${dayName}:`, error.message);
+        }
+
+        currentDate.setDate(currentDate.getDate() + 1);
     }
-  
+
     return schedules;
-  };
-  
-  module.exports = { assignShiftsToEmployees };
-  
+};
+
+module.exports = { assignShiftsToEmployees };

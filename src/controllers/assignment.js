@@ -253,58 +253,124 @@ const employeeNames = [
 const getAutomaticAsignments = async (req, res) => {
   try {
     const { rol, _id } = req.user;
+    const { startDate, endDate, employeeIds } = req.body;
 
-
+    // Validar permisos del usuario
     if (rol !== "jefe" && rol !== "admin") {
       return res.status(403).json({
         success: false,
-        msg: "No tienes permisos para acceder a esta información"
+        msg: "No tienes permisos para acceder a esta información.",
       });
     }
 
-    const userComplete = await User.findById(_id);
-    if (!userComplete || !userComplete.id_department) {
+    // Validar fechas y empleados
+    if (!startDate || !endDate || !employeeIds || !Array.isArray(employeeIds)) {
       return res.status(400).json({
         success: false,
-        msg: "Usuario sin departamento asignado"
+        msg: "Fechas de inicio, fin y lista de empleados son obligatorios.",
       });
     }
 
-    const departmentId = userComplete.id_department.toString();
-
-    const usersInDepartment = await User.find({
-      id_department: departmentId
-    }).select('name');
-
-    const employeeNames = usersInDepartment.map(user => user.name);
-
-    //const { numWeeks } = req.body;
-    const numWeeks = 2;
-    if (!numWeeks || typeof numWeeks !== 'number' || numWeeks < 1) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start) || isNaN(end) || start > end) {
       return res.status(400).json({
         success: false,
-        msg: "La cantidad de semanas es requerida y debe ser un número válido"
+        msg: "Las fechas proporcionadas no son válidas.",
       });
     }
 
-    const shifts = ['Mañana', 'Tarde', 'Noche'];
+    // Validar existencia de empleados
+    const validUsers = await User.find({ _id: { $in: employeeIds } }).select("_id");
+    const validUserIds = validUsers.map((user) => user._id.toString());
 
-    const assignedSchedule = assignShiftsToEmployees(employeeNames, shifts, numWeeks);
+    if (validUserIds.length !== employeeIds.length) {
+      return res.status(400).json({
+        success: false,
+        msg: "Algunos de los IDs de empleados no son válidos.",
+      });
+    }
 
+    const shifts = ["Mañana", "Tarde", "Noche"];
+
+    // Generar cuadro de asignaciones usando el algoritmo
+    const assignedSchedule = assignShiftsToEmployees(validUserIds, shifts, start, end);
+
+    const shiftsToInsert = [];
+    const assignmentsToInsert = [];
+
+    // Generar turnos y asignaciones
+    assignedSchedule.forEach((schedule) => {
+      const currentDate = new Date(schedule.date);
+
+      for (const [shiftName, employeeIds] of Object.entries(schedule.shifts)) {
+        const startShift = new Date(currentDate);
+        const endShift = new Date(currentDate);
+
+        if (shiftName === "Mañana") {
+          startShift.setHours(6, 0, 0, 0);
+          endShift.setHours(14, 0, 0, 0);
+        } else if (shiftName === "Tarde") {
+          startShift.setHours(14, 0, 0, 0);
+          endShift.setHours(22, 0, 0, 0);
+        } else if (shiftName === "Noche") {
+          startShift.setHours(22, 0, 0, 0);
+          endShift.setDate(endShift.getDate() + 1);
+          endShift.setHours(6, 0, 0, 0);
+        }
+
+        // Crear turno
+        const newShift = {
+          name_shift: shiftName,
+          start_date: startShift,
+          end_date: endShift,
+        };
+        const shiftIndex = shiftsToInsert.push(newShift) - 1;
+
+        // Crear asignaciones
+        for (const employeeId of employeeIds) {
+          assignmentsToInsert.push({
+            id_user: employeeId,
+            shiftIndex, // Relacionar el índice del turno
+          });
+        }
+      }
+    });
+
+    // Insertar turnos en la base de datos
+    const insertedShifts = await Shift.insertMany(shiftsToInsert);
+
+    // Actualizar las asignaciones con los IDs de turno reales
+    assignmentsToInsert.forEach((assignment) => {
+      const shift = insertedShifts[assignment.shiftIndex];
+      assignment.id_shift = shift._id;
+      delete assignment.shiftIndex;
+    });
+
+    // Insertar asignaciones en la base de datos
+    const insertedAssignments = await Assignment.insertMany(assignmentsToInsert);
+
+    // Responder con resumen
     return res.status(200).json({
       success: true,
-      data: assignedSchedule,
-      msg: "Se asignaron los turnos correctamente"
+      msg: "Turnos y asignaciones creados exitosamente.",
+      data: {
+        shiftsCreated: insertedShifts.length,
+        assignmentsCreated: insertedAssignments.length,
+      },
     });
   } catch (error) {
     console.error("Error en getAutomaticAssignments:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      msg: "Error del servidor",
-      error: error.message
+      msg: "Error del servidor.",
+      error: error.message,
     });
   }
 };
+
+
+
 
 
 
