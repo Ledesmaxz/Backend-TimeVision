@@ -3,6 +3,7 @@ const User = require("../models/user");
 const Shift = require("../models/shift");
 const multer = require("multer");
 const upload = multer();
+const { assignShiftsToEmployees } = require('./AutomaticAssignment');
 
 const mongoose = require('mongoose');
 
@@ -243,11 +244,84 @@ const getDepartmentAssignments = async (req, res) => {
   }
 };
 
+const employeeNames = [
+  'Juan', 'Pedro', 'María', 'Luis', 'Ana', 'Carlos', 'José', 'Laura', 'David', 'Elena', 
+  'Antonio', 'Beatriz', 'Fernando', 'Carmen', 'Marta', 'Alberto', 'Pablo', 'Raquel', 
+  'Sofía', 'Miguel'
+];
+
+const getAutomaticAsignments = async (req, res) => {
+  try {
+    const { rol, _id } = req.user;
+
+    // Validar permisos del usuario
+    if (rol !== "jefe" && rol !== "admin") {
+      return res.status(403).json({
+        success: false,
+        msg: "No tienes permisos para acceder a esta información"
+      });
+    }
+
+    // Obtener información del usuario
+    const userComplete = await User.findById(_id);
+    if (!userComplete || !userComplete.id_department) {
+      return res.status(400).json({
+        success: false,
+        msg: "Usuario sin departamento asignado"
+      });
+    }
+
+    const departmentId = userComplete.id_department.toString();
+
+    // Obtener los empleados del departamento
+    const usersInDepartment = await User.find({
+      id_department: departmentId
+    }).select('name');
+
+    // Crear una lista de nombres de los empleados
+    //const employeeNames = usersInDepartment.map(user => user.name);
+
+    // Validar entrada para cantidad de semanas
+    //const { numWeeks } = req.body;
+    const numWeeks = 2;
+    if (!numWeeks || typeof numWeeks !== 'number' || numWeeks < 1) {
+      return res.status(400).json({
+        success: false,
+        msg: "La cantidad de semanas es requerida y debe ser un número válido"
+      });
+    }
+
+    // Definir los turnos disponibles
+    const shifts = ['Mañana', 'Tarde', 'Noche'];
+
+    // Llamar a la función de asignación
+    const assignedSchedule = assignShiftsToEmployees(employeeNames, shifts, numWeeks);
+
+    // Responder con el resultado
+    return res.status(200).json({
+      success: true,
+      data: assignedSchedule,
+      msg: "Se asignaron los turnos correctamente"
+    });
+  } catch (error) {
+    console.error("Error en getAutomaticAssignments:", error);
+    res.status(500).json({
+      success: false,
+      msg: "Error del servidor",
+      error: error.message
+    });
+  }
+};
+
+
+
+
 module.exports = {
   createAssignment: [upload.none(), createAssignment],
   getAssignment,
   getMyAssignments: [upload.none(), getMyAssignments],
   getDepartmentAssignments: [upload.none(), getDepartmentAssignments],
+  getAutomaticAsignments: [upload.none(), getAutomaticAsignments],
   getAssignmentes,
   updateAssignment,
   deleteAssignment,

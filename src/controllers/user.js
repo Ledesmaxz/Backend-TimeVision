@@ -249,9 +249,9 @@ const updateUser = async (req, res) => {
         const uniqueUsersOnLeave = new Set(usersOnLeave);
         const notWorkingUsers = totalUsers - workingUsers - uniqueUsersOnLeave.size;
 
-        const percentageWorking = ((workingUsers / totalUsers) * 100).toFixed(2);
-        const percentageNotWorking = ((notWorkingUsers / totalUsers) * 100).toFixed(2);
-        const percentageOnLeave = ((uniqueUsersOnLeave.size / totalUsers) * 100).toFixed(2);
+        const percentageWorking = ((workingUsers / totalUsers) * 100);
+        const percentageNotWorking = ((notWorkingUsers / totalUsers) * 100);
+        const percentageOnLeave = ((uniqueUsersOnLeave.size / totalUsers) * 100);
 
         res.status(200).send({
             msg: "Estado de usuarios calculado exitosamente",
@@ -259,9 +259,9 @@ const updateUser = async (req, res) => {
             workingUsers,
             notWorkingUsers,
             usersOnLeave: uniqueUsersOnLeave.size,
-            percentageWorking: `${percentageWorking}%`,
-            percentageNotWorking: `${percentageNotWorking}%`,
-            percentageOnLeave: `${percentageOnLeave}%`
+            percentageWorking,
+            percentageNotWorking,
+            percentageOnLeave
         });
     } catch (error) {
         console.error("Error en getStatusUsers:", error);
