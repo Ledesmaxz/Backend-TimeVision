@@ -10,7 +10,7 @@ require("dotenv").config();
 
 app.use(morgan('dev'));
 const corsOptions = {
-  origin: 'http://localhost:3000', 
+  origin: ['https://time-vision-frontend-web.vercel.app', 'http://localhost:3000'],
   methods: ['GET','HEAD','PUT','PATCH','POST','DELETE'],
   credentials: true,
   optionsSuccessStatus: 204,
