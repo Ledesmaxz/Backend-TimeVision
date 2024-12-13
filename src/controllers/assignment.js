@@ -18,23 +18,21 @@ const createAssignment = async (req, res) => {
   }
 
   try {
-    if (!mongoose.isValidObjectId(id_user)) {
-      return res.status(400).send({ msg: "ID de usuario no válido" });
+    if (!mongoose.isValidObjectId(id_user) || !mongoose.isValidObjectId(id_shift)) {
+      return res.status(400).send({ msg: "ID de usuario o turno no válido" });
     }
-    const userExists = await User.findById(id_user);
+
+    const userExists = await User.findById(new mongoose.Types.ObjectId(id_user));
     if (!userExists) {
       return res.status(404).send({ msg: "Usuario no encontrado" });
     }
 
-    if (!mongoose.isValidObjectId(id_shift)) {
-      return res.status(400).send({ msg: "ID de turno no válido" });
-    }
-    const shiftExists = await Shift.findById(id_shift);
+    const shiftExists = await Shift.findById(new mongoose.Types.ObjectId(id_shift));
     if (!shiftExists) {
       return res.status(404).send({ msg: "Turno no encontrado" });
     }
 
-    const assignment = new Assignment({ 
+    const assignment = new Assignment({
       id_user,
       id_shift, 
     });
